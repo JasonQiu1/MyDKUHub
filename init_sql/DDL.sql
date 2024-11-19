@@ -19,6 +19,7 @@ drop table if exists classroom;
 drop table if exists building;
 drop table if exists student;
 drop table if exists admin;
+drop table if exists hold;
 
 create table dept (
     name varchar(50) primary key,
@@ -236,6 +237,15 @@ create table login_info (
     id varchar(10) primary key,
     password varchar(100) not null,
     type enum('student', 'instructor', 'admin') not null
+);
+
+create table hold (
+		student_id varchar(50),
+		type enum('advising', 'register') not null,
+		primary key (student_id, type),
+		foreign key (student_id) references student(id)
+        on delete cascade
+        on update cascade
 );
 
 delimiter $$
