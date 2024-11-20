@@ -1,4 +1,28 @@
+DROP PROCEDURE IF EXISTS check_login_info_before_insert;
 
+delimiter $$
+create trigger check_login_info_before_insert
+before insert on login_info
+for each row
+begin
+    if new.type = 'student' then
+        if not exists (select 1 from student where id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in student table for type student';
+        end if;
+    elseif new.type = 'instructor' then
+        if not exists (select 1 from instructor where id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in instructor table for type instructor';
+        end if;
+    elseif new.type = 'admin' then
+        if not exists (select 1 from admin where admin_id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in admin table for type admin';
+        end if;
+    end if;
+end$$
+delimiter ;
 
 -- Procedure: entollment
 -- We check the time-conflict,pre+anti+co_requisite,credit_limit,balance,hold,capacity,class_duplication
@@ -22,7 +46,7 @@ BEGIN
     DECLARE duplicate_course_count INT;
     
     
-    --Step1: check if there is any outstanding payment
+    -- Step1: check if there is any outstanding payment
     SELECT outstanding_due INTO balance_due
     FROM balance
     WHERE student_id = student_id;
@@ -32,7 +56,7 @@ BEGIN
     END IF;
     
 
-    --Step2: check if there is any hold
+    -- Step2: check if there is any hold
 	SELECT COUNT(*) INTO hold_count
     FROM hold
     WHERE student_id = student_id
@@ -43,7 +67,7 @@ BEGIN
     END IF;
 
     
-    --Step3: check if the student already taken the same course before
+    -- Step3: check if the student already taken the same course before
     SET duplicate_course_count = (
         SELECT COUNT(*)
         FROM enrollment e
