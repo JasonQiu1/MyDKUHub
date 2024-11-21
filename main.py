@@ -20,27 +20,32 @@ class Session:
         self.screenType = ScreenType.LOGIN
         self.screen = LoginScreen(self)
         self.user_level = None
+        self.user_name = None
 
     def run(self):
-        while True:
-            self.screen.draw()
-            if self.screenType == ScreenType.EXIT:
-                return
+        try:
+            while True:
+                self.screen.draw()
+                if self.screenType == ScreenType.EXIT:
+                    return
 
-            try:
-                newScreenType, args = self.screen.prompt()
-                if newScreenType:
-                    self.screen = screenTypeToScreenClass[newScreenType](self, *args)
-                    self.screenType = newScreenType
-            except Exception as e:
-                print("An error occurred:", e);
-
-            self.drawScreenSpacer()
+                try:
+                    newScreenType, args = self.screen.prompt()
+                    if newScreenType:
+                        self.screen = screenTypeToScreenClass[newScreenType](self, *args)
+                        self.screenType = newScreenType
+                except Exception as e:
+                    print("An error occurred:", e)
+                self.drawScreenSpacer()
+        finally:
+            if Screen.db_connection:
+                Screen.db_connection.close()
 
     def drawScreenSpacer(self):
         printToScreen("-----------------------")
 
 def main():
+    Screen.init_db("localhost", "root", "20021108", "proj") # change this
     session = Session()
     session.run()
     return 0

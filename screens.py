@@ -2,6 +2,9 @@
 
 from enum import StrEnum, auto
 from screen_base import *
+from db_connection import DBConnection
+from screen_base import *
+from screen_types import ScreenType
 
 # An exit screen. 
 # Special screen in which prompt() is not called, so no implementation.
@@ -15,7 +18,7 @@ class UserLevel(StrEnum):
     INSTRUCTOR = auto(),
     ADMINISTRATOR = auto(),
 
-# A login screen.
+# Login screen.
 class LoginScreen(Screen):
     def draw(self):
         printToScreen("Welcome to MyDKUHub! Please login!")
@@ -24,25 +27,37 @@ class LoginScreen(Screen):
         username = getUserInput("Username (leave empty to exit)")
         if not username:
             return ScreenType.EXIT, ()
-        
+
         password = getUserInput("Password")
         if not password:
-            password = [""]
-        userLevel = self.login(username[0], password[0])
-        if userLevel == None:
-            print("Unsuccessful, please try again.")
-            return False, ()
+            return ScreenType.LOGIN, ()
 
-        self.session.userLevel = userLevel
+        userLevel, userName = self.login(username[0], password[0])
+        if userLevel is None:
+            printToScreen("Unsuccessful login, please try again.")
+            return ScreenType.LOGIN, ()
 
+        self.session.user_level = userLevel
+        self.session.user_name = userName  
         return ScreenType.HOME, ()
 
-    # Login with the username and password.
-    # Return the user's access level.
-    # Return None if unsuccessful.
     def login(self, username, password):
-        # TODO: IMPLEMENT
-        return UserLevel.STUDENT
+        query = """
+        SELECT li.type, 
+               CASE 
+                   WHEN li.type = 'student' THEN CONCAT(s.first_name, ' ', s.last_name)
+                   WHEN li.type = 'instructor' THEN CONCAT(i.first_name, ' ', i.last_name)
+                   ELSE 'Admin'
+               END AS user_name
+        FROM login_info li
+        LEFT JOIN student s ON li.id = s.id
+        LEFT JOIN instructor i ON li.id = i.id
+        WHERE li.id = %s AND li.password = %s
+        """
+        result = self.db_connection.execute_query(query, (username, password))
+        if result:
+            return result[0]['type'], result[0]['user_name']
+        return None, None
 
 
 # User home screen. 
@@ -55,9 +70,10 @@ class HomeScreen(Screen):
                 "Search Classes": (ScreenType.LOGIN, ()), 
                 "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('TODO: INFO FOR QUERY FOR SHOPPING LIST')), 
                 "View My Classes": (ScreenType.CLASS_RESULTS, ('TODO: INFO FOR QUERY FOR MY CLASSES'))}
+        
     def draw(self):
-        # TODO: display username instead of userlevel
-        printToScreen(f"Welcome {self.session.userLevel.value.lower()}! Press ENTER to logout.")
+        printToScreen(f"Welcome {self.session.user_name}! Press ENTER to logout.")
+
     def prompt(self):
         userin = promptOptions(self.optionsToScreen.keys())
         if not userin:
