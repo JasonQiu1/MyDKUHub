@@ -1,5 +1,4 @@
-DROP PROCEDURE IF EXISTS check_login_info_before_insert;
-
+DROP trigger IF EXISTS check_login_info_before_insert;
 delimiter $$
 create trigger check_login_info_before_insert
 before insert on login_info
@@ -47,7 +46,7 @@ BEGIN
     
     
     -- Step1: check if there is any outstanding payment
-    SELECT outstanding_due INTO balance_due
+    SELECT due INTO balance_due
     FROM balance
     WHERE student_id = student_id;
     IF balance_due > 0 THEN
@@ -565,7 +564,6 @@ DELIMITER ;
 
 -- example usage
 CALL swap_course('yg202', 55, '56');
-
 
 
 
