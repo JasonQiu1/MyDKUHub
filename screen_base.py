@@ -45,3 +45,5 @@ class Screen:
         getUserInput("Default prompt, redirecting to LOGIN by default.")
 
         return ScreenType.LOGIN, ()
+
+

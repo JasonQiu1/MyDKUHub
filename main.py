@@ -7,7 +7,7 @@ screenTypeToScreenClass = {
     ScreenType.LOGIN: LoginScreen,
     ScreenType.HOME: HomeScreen,
     #ScreenType.CLASS_SEARCH: ,
-    #ScreenType.CLASS_RESULTS: ,
+    ScreenType.CLASS_RESULTS: ClassResultsScreen,
     #ScreenType.USER_INFORMATION: ,
     #ScreenType.ROSTER: ,
     #ScreenType.ADVISEES: ,
@@ -21,6 +21,7 @@ class Session:
         self.screen = LoginScreen(self)
         self.user_level = None
         self.user_name = None
+        self.user_netid = None
 
     def run(self):
         try:
@@ -31,6 +32,7 @@ class Session:
 
                 try:
                     newScreenType, args = self.screen.prompt()
+                    print(f"Switching to screen: {newScreenType}, args: {args}")
                     if newScreenType:
                         self.screen = screenTypeToScreenClass[newScreenType](self, *args)
                         self.screenType = newScreenType

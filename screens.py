@@ -39,6 +39,7 @@ class LoginScreen(Screen):
 
         self.session.user_level = userLevel
         self.session.user_name = userName  
+        self.session.user_netid = username[0]
         return ScreenType.HOME, ()
 
     def login(self, username, password):
@@ -68,8 +69,8 @@ class HomeScreen(Screen):
         # TODO: create options based on the userLevel
         self.optionsToScreen = {
                 "Search Classes": (ScreenType.LOGIN, ()), 
-                "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('TODO: INFO FOR QUERY FOR SHOPPING LIST')), 
-                "View My Classes": (ScreenType.CLASS_RESULTS, ('TODO: INFO FOR QUERY FOR MY CLASSES'))}
+                "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('shopping',)), 
+                "View My Classes": (ScreenType.CLASS_RESULTS, ('enrolled',)),}
         
     def draw(self):
         printToScreen(f"Welcome {self.session.user_name}! Press ENTER to logout.")
@@ -77,15 +78,95 @@ class HomeScreen(Screen):
     def prompt(self):
         userin = promptOptions(self.optionsToScreen.keys())
         if not userin:
-            self.session.userLevel = None
+            self.session.user_level = None
+            self.session.user_name = None
             return ScreenType.LOGIN, ()
-    
+
         if userin[0].isnumeric():
             optionIndex = int(userin[0])
-            if optionIndex >= 0 and optionIndex < len(self.optionsToScreen):
+            if 0 <= optionIndex < len(self.optionsToScreen):
                 option = list(self.optionsToScreen.keys())[optionIndex]
-                printToScreen(f"Selected '{option}'") # TODO: REMOVE AFTER DEBUGGING
-                return self.optionsToScreen[option]
+                return self.optionsToScreen[option][0], (self.optionsToScreen[option][1])
 
         printToScreen("Invalid option, please try again.")
-        return False, ()
+        return ScreenType.HOME, ()
+    
+class ClassResultsScreen(Screen):
+    def __init__(self, session, context):
+        super().__init__(session)
+        self.context = context  
+
+    def draw(self):
+        if self.context == 'enrolled':
+            printToScreen(f"Enrolled Courses for {self.session.user_name}:")
+            courses = self.get_enrolled_courses(self.session.user_netid)
+        elif self.context == 'shopping':
+            printToScreen(f"Shopping Cart for {self.session.user_name}:")
+            courses = self.get_shopping_courses(self.session.user_netid)
+        else:
+            printToScreen("Unknown context.")
+            return
+
+        if not courses:
+            printToScreen("No courses found.")
+            return
+
+        for course in courses:
+            printToScreen(
+                f"{course['year']} {course['term']} {course['session']} - "
+                f"{course['course_id']} {course['course_name']} ({course['type']}) - "
+                f"{course['dept_name']} - {course['credits']} credits - Grade: {course.get('grade', 'N/A')} - "
+                f"Instructor: {course['instructor_first_name']} {course['instructor_last_name']}"
+            )
+
+    def prompt(self):
+        printToScreen("Press ENTER to return to the Home Screen.")
+        input()  
+        return ScreenType.HOME, ()
+
+    def get_enrolled_courses(self, student_id):
+        query = """
+        SELECT 
+            c.id AS course_id,
+            c.type AS type,
+            c.name AS course_name,
+            c.dept_name,
+            c.credits,
+            s.term,
+            s.session,
+            s.year,
+            e.grade,
+            i.first_name AS instructor_first_name,
+            i.last_name AS instructor_last_name
+        FROM enrollment e
+        JOIN section s ON e.section_id = s.id
+        JOIN course c ON s.course_id = c.id AND s.type = c.type
+        JOIN teaches t ON s.id = t.section_id
+        JOIN instructor i ON t.instructor_id = i.id
+        WHERE e.student_id = %s
+        ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
+        """
+        return self.db_connection.execute_query(query, (student_id,))
+
+    def get_shopping_courses(self, student_id):
+        query = """
+        SELECT 
+            c.id AS course_id,
+            c.type AS type,
+            c.name AS course_name,
+            c.dept_name,
+            c.credits,
+            s.term,
+            s.session,
+            s.year,
+            i.first_name AS instructor_first_name,
+            i.last_name AS instructor_last_name
+        FROM shopping sh
+        JOIN section s ON sh.section_id = s.id
+        JOIN course c ON s.course_id = c.id AND s.type = c.type
+        JOIN teaches t ON s.id = t.section_id
+        JOIN instructor i ON t.instructor_id = i.id
+        WHERE sh.student_id = %s
+        ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
+        """
+        return self.db_connection.execute_query(query, (student_id,))
