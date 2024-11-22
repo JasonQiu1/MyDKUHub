@@ -23,7 +23,7 @@ begin
 end$$
 delimiter ;
 
--- Procedure: entollment
+-- Procedure: enrollment
 -- We check the time-conflict,pre+anti+co_requisite,credit_limit,balance,hold,capacity,class_duplication
 
 DROP PROCEDURE IF EXISTS enroll_selected_courses;
@@ -35,18 +35,21 @@ CREATE PROCEDURE enroll_selected_courses(
 )
 BEGIN
     DECLARE conflict_count INT;
-    DECLARE unmet_prereq_groups INT;
-    DECLARE unmet_coreq_groups INT;
     DECLARE anti_req_violations INT;
     DECLARE credit_exceeded_count INT;
     DECLARE balance_due double;
     DECLARE hold_count BOOLEAN;
     DECLARE over_capacity_count INT;
     DECLARE duplicate_course_count INT;
+    DECLARE total_prereq_groups INT;
+    DECLARE satisfied_prereq_groups INT;
+	DECLARE total_coreq_groups INT;
+	DECLARE satisfied_coreq_groups INT;
+    
     
     
     -- Step1: check if there is any outstanding payment
-    SELECT due - paid INTO balance_due
+    SELECT outstanding_due INTO balance_due
     FROM balance
     WHERE student_id = student_id;
     IF balance_due > 0 THEN
@@ -128,42 +131,44 @@ BEGIN
         SET MESSAGE_TEXT = 'Time conflict detected with previously enrolled courses';
     END IF;
 
-    -- check prerequisite
-    SET unmet_prereq_groups = (
-        SELECT COUNT(DISTINCT cr.group_id)
-        FROM course_req cr
-        JOIN section s_req ON cr.req_id = s_req.course_id
-        JOIN section s_target ON cr.course_id = s_target.course_id
-        WHERE FIND_IN_SET(s_target.id, selected_sections)
-          AND cr.type = 'prereq'
-          AND cr.group_id NOT IN (
-              -- Check past enrollments
-              SELECT DISTINCT cr.group_id
-              FROM course_req cr
-              JOIN section s ON cr.req_id = s.course_id
-              JOIN enrollment e ON e.section_id = s.id
-              WHERE e.student_id = student_id
-                AND (s.year < s_target.year OR 
-                     (s.year = s_target.year AND 
-                      (s.term < s_target.term OR 
-                       (s.term = s_target.term AND s.session < s_target.session))))
-              UNION
-              -- Check selected sections
-              SELECT DISTINCT cr.group_id
-              FROM course_req cr
-              JOIN section s ON cr.req_id = s.course_id
-              WHERE FIND_IN_SET(s.id, selected_sections)
-                AND (s.year < s_target.year OR 
-                     (s.year = s_target.year AND 
-                      (s.term < s_target.term OR 
-                       (s.term = s_target.term AND s.session < s_target.session))))
-          )
-    );
-    IF unmet_prereq_groups > 0 THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Prerequisite not satisfied in past or current batch of courses';
-    END IF;
+	
+     -- Count total prerequisite groups
+	SET total_prereq_groups = (
+		SELECT COUNT(DISTINCT cr.group_id)
+		FROM course_req cr
+		JOIN section s_target ON cr.course_id = s_target.course_id
+		WHERE FIND_IN_SET(s_target.id, selected_sections)
+		  AND cr.type = 'prereq'
+	);
 
+	-- Count satisfied prerequisite groups
+	SET satisfied_prereq_groups = (
+		SELECT COUNT(DISTINCT cr.group_id)
+		FROM course_req cr
+		JOIN section s_req ON cr.req_id = s_req.course_id
+		JOIN section s_target ON cr.course_id = s_target.course_id
+		LEFT JOIN enrollment e ON e.section_id = s_req.id
+		WHERE FIND_IN_SET(s_target.id, selected_sections)
+		  AND cr.type = 'prereq'
+		  AND (
+			  (e.student_id = student_id AND
+			   (s_req.year < s_target.year OR 
+				(s_req.year = s_target.year AND 
+				 (s_req.term < s_target.term OR 
+				  (s_req.term = s_target.term AND s_req.session < s_target.session)))))
+			  OR (FIND_IN_SET(s_req.id, selected_sections)
+				  AND (s_req.year < s_target.year OR 
+					   (s_req.year = s_target.year AND 
+						(s_req.term < s_target.term OR 
+						 (s_req.term = s_target.term AND s_req.session < s_target.session)))))
+		  )
+	);
+
+	-- Compare total and satisfied prerequisite groups
+	IF satisfied_prereq_groups < total_prereq_groups THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Not all prerequisite groups are satisfied.';
+	END IF;
 
     -- check anti-requisites
     SET anti_req_violations = (
@@ -188,43 +193,45 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Anti-requisite violated for this course';
     END IF;
+    
 
+     -- Count total co-requisite groups
+	SET total_coreq_groups = (
+		SELECT COUNT(DISTINCT cr.group_id)
+		FROM course_req cr
+		JOIN section s_target ON cr.course_id = s_target.course_id
+		WHERE FIND_IN_SET(s_target.id, selected_sections)
+		  AND cr.type = 'coreq'
+	);
 
-    -- check co-requisites
-    SET unmet_coreq_groups = (
-        SELECT COUNT(DISTINCT cr.group_id)
-        FROM course_req cr
-        JOIN section s_req ON cr.req_id = s_req.course_id
-        JOIN section s_target ON cr.course_id = s_target.course_id
-        WHERE FIND_IN_SET(s_target.id, selected_sections)
-          AND cr.type = 'coreq'
-          AND cr.group_id NOT IN (
-              -- Check past enrollments
-              SELECT DISTINCT cr.group_id
-              FROM course_req cr
-              JOIN section s ON cr.req_id = s.course_id
-              JOIN enrollment e ON e.section_id = s.id
-              WHERE e.student_id = student_id
-                AND (s.year < s_target.year OR 
-                     (s.year = s_target.year AND 
-                      (s.term < s_target.term OR 
-                       (s.term = s_target.term AND s.session <= s_target.session))))
-              UNION
-              -- Check selected sections
-              SELECT DISTINCT cr.group_id
-              FROM course_req cr
-              JOIN section s ON cr.req_id = s.course_id
-              WHERE FIND_IN_SET(s.id, selected_sections)
-                AND (s.year < s_target.year OR 
-                     (s.year = s_target.year AND 
-                      (s.term < s_target.term OR 
-                       (s.term = s_target.term AND s.session <= s_target.session))))
-          )
-    );
-    IF unmet_coreq_groups > 0 THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Co-requisite not satisfied in past or current batch of courses';
-    END IF;
+	-- Count satisfied co-requisite groups
+	SET satisfied_coreq_groups = (
+		SELECT COUNT(DISTINCT cr.group_id)
+		FROM course_req cr
+		JOIN section s_req ON cr.req_id = s_req.course_id
+		JOIN section s_target ON cr.course_id = s_target.course_id
+		LEFT JOIN enrollment e ON e.section_id = s_req.id
+		WHERE FIND_IN_SET(s_target.id, selected_sections)
+		  AND cr.type = 'coreq'
+		  AND (
+			  (e.student_id = student_id AND
+			   (s_req.year < s_target.year OR 
+				(s_req.year = s_target.year AND 
+				 (s_req.term < s_target.term OR 
+				  (s_req.term = s_target.term AND s_req.session <= s_target.session)))))
+			  OR (FIND_IN_SET(s_req.id, selected_sections)
+				  AND (s_req.year < s_target.year OR 
+					   (s_req.year = s_target.year AND 
+						(s_req.term < s_target.term OR 
+						 (s_req.term = s_target.term AND s_req.session <= s_target.session)))))
+		  )
+	);
+
+	-- Compare total and satisfied co-requisite groups
+	IF satisfied_coreq_groups < total_coreq_groups THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Not all co-requisite groups are satisfied.';
+	END IF;
 
     -- check the total credit limit
     WITH selected_credits AS (
@@ -270,7 +277,6 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Credit limit exceeded for one or more terms';
     END IF;
-    
 
     -- check the section capacity
      SET over_capacity_count = (
@@ -301,17 +307,22 @@ BEGIN
       AND FIND_IN_SET(section_id, selected_sections);
     SET SQL_SAFE_UPDATES = 1; 
     COMMIT;
+
+
+
 END$$
 DELIMITER ;
 
 -- Example usage:
+CALL enroll_selected_courses('yg202', '80');
 
--- CALL enroll_selected_courses('yg202', '55');
 
-
--- Here is the trigger on insert in section_time, we need to ensure the classroom is not occupied by two courses
 DROP TRIGGER IF EXISTS check_section_time_insert_validity;
+
 DELIMITER $$
+
+
+
 CREATE TRIGGER check_section_time_insert_validity
 BEFORE INSERT ON section_time
 FOR EACH ROW
@@ -341,12 +352,15 @@ BEGIN
         SET MESSAGE_TEXT = 'Room is already occupied at the same time by another section';
     END IF;
 END$$
+
+
+
 DELIMITER ;
 
-
--- Here is the trigger on update in section_time, we need to ensure the classroom is not occupied by two courses, meanwhile, check the instructor's availibility
 DROP TRIGGER IF EXISTS check_section_time_update_validity;
+
 DELIMITER $$
+
 CREATE TRIGGER check_section_time_update_validity
 BEFORE UPDATE ON section_time
 FOR EACH ROW
@@ -405,25 +419,28 @@ END$$
 
 DELIMITER ;
 
--- Example Usage
 insert into section (course_id, type, term, session, year, capacity, building_name, room_name) values 
 ('COMPSCI 101', 'SEM', 'Fall', 'first', 2024, 60, 'IB', '3106');
+
 insert into section_time (section_id, time_slot_id, day) values 
 (973, 4, 'Mon');
+
 UPDATE section_time
 SET time_slot_id = 7,
     day = 'tue'
 WHERE section_id = 2;
 
 
--- Here is a trigger for insert and update in teaches, we need to ensure no teacher is assigned to multiple courses at the same time.
 DROP TRIGGER IF EXISTS check_teaches_insert;
+
 DELIMITER $$
+
 CREATE TRIGGER check_teaches_insert
 BEFORE INSERT ON teaches
 FOR EACH ROW
 BEGIN
     DECLARE time_conflict_count INT;
+
     -- Check for time conflicts
     SELECT COUNT(*)
     INTO time_conflict_count
@@ -440,20 +457,26 @@ BEGIN
       AND ts1.end_time > ts2.start_time
       AND s1.year = s2.year
       AND s1.term = s2.term
-      AND s1.session = s2.session;     
+      AND s1.session = s2.session;
+      
     IF time_conflict_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Instructor has a time conflict with another section';
     END IF;
 END$$
 DELIMITER ;
+
+
 DROP TRIGGER IF EXISTS check_teaches_update;
+
 DELIMITER $$
+
 CREATE TRIGGER check_teaches_update
 BEFORE UPDATE ON teaches
 FOR EACH ROW
 BEGIN
     DECLARE time_conflict_count INT;
+
     -- Check for time conflicts
     SELECT COUNT(*)
     INTO time_conflict_count
@@ -472,24 +495,26 @@ BEGIN
       AND s1.year = s2.year
       AND s1.term = s2.term
       AND s1.session = s2.session;
+
     IF time_conflict_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Instructor has a time conflict with another section';
     END IF;
 END$$
+
 DELIMITER ;
 
--- Example usage:
+
 INSERT INTO teaches (instructor_id, section_id)
 VALUES ('bl291', 650);
+
 UPDATE teaches
 SET section_id = 22
 WHERE instructor_id = 'bl291' and section_id=650; 
+
 DROP PROCEDURE IF EXISTS make_payment;
 DELIMITER $$
 
-
--- Here is a procedure of make_payment
 CREATE PROCEDURE make_payment(
     IN student_id VARCHAR(50),
     IN payment_amount NUMERIC(10, 2)
@@ -497,7 +522,7 @@ CREATE PROCEDURE make_payment(
 BEGIN
     DECLARE current_outstanding_due NUMERIC(10, 2);
     
-    SELECT due - paid INTO current_outstanding_due
+    SELECT outstanding_due INTO current_outstanding_due
     FROM balance
     WHERE student_id = student_id;
 
@@ -525,8 +550,8 @@ END$$
 DELIMITER ;
 
 
--- Here is the procedure of swapping the course
 DELIMITER $$
+
 DROP PROCEDURE IF EXISTS swap_course;
 CREATE PROCEDURE swap_course(
     IN student_id VARCHAR(50),
@@ -535,6 +560,7 @@ CREATE PROCEDURE swap_course(
 )
 BEGIN
     DECLARE drop_count INT;
+
     -- Step 1: Check if the student is actually enrolled in the course to be dropped
     SELECT COUNT(*) INTO drop_count
     FROM enrollment
@@ -545,12 +571,15 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Student is not enrolled in the section to be dropped';
     END IF;
+
     -- Step 2: Drop the specified course
     DELETE FROM enrollment
     WHERE student_id = student_id
       AND section_id = drop_section_id;
+
     -- Step 3: Enroll in the new sections
     CALL enroll_selected_courses(student_id, enroll_section_ids);
+
     -- Step 4: Log the successful swap
     SELECT CONCAT(
         'Successfully swapped section ', drop_section_id, 
@@ -559,9 +588,3 @@ BEGIN
 END$$
 
 DELIMITER ;
-
--- example usage
--- CALL swap_course('yg202', 55, '56');
-
-
-
