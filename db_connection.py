@@ -35,7 +35,7 @@ class DBConnection:
             return cursor.fetchall()
         except Error as e:
             print(f"Error executing query: {e}")
-            return None
+            raise
 
     def execute_update(self, query, params=None):
         try:
@@ -44,3 +44,19 @@ class DBConnection:
             self.connection.commit()
         except Error as e:
             print(f"Error executing update: {e}")
+            raise
+    
+    def execute_procedure(self, procedure_name, params):
+        cursor = self.connection.cursor()
+        try:
+            cursor.callproc(procedure_name, params)
+            self.connection.commit()
+            results = []
+            for result in cursor.stored_results():
+                results.extend(result.fetchall())
+            return results if results else None
+        except mysql.connector.Error as e:
+            print(f"Error executing procedure {procedure_name}: {e}")
+            raise
+        finally:
+            cursor.close()

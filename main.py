@@ -6,7 +6,7 @@ from screens import *
 screenTypeToScreenClass = {
     ScreenType.LOGIN: LoginScreen,
     ScreenType.HOME: HomeScreen,
-    #ScreenType.CLASS_SEARCH: ,
+    ScreenType.CLASS_SEARCH: ClassSearchScreen,
     ScreenType.CLASS_RESULTS: ClassResultsScreen,
     #ScreenType.USER_INFORMATION: ,
     #ScreenType.ROSTER: ,

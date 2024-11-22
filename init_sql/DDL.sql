@@ -17,9 +17,10 @@ drop table if exists dept;
 drop table if exists time_slot;
 drop table if exists classroom;
 drop table if exists building;
+drop table if exists hold;
 drop table if exists student;
 drop table if exists admin;
-drop table if exists hold;
+
 
 create table dept (
     name varchar(50) primary key,
@@ -220,9 +221,8 @@ create table address (
 
 create table balance (
     student_id varchar(50),
-    total_due numeric (10,2) not null check (total_due >= 0),
-    outstanding_due numeric (10,2) not null check (outstanding_due >= 0),
-    paid numeric (10,2) not null check (paid >= 0),
+    due int,
+    paid int,
     primary key (student_id),
     foreign key (student_id) references student(id)
         on delete cascade
@@ -248,3 +248,30 @@ create table hold (
         on delete cascade
         on update cascade
 );
+
+
+delimiter $$
+
+create trigger check_login_info_before_insert
+before insert on login_info
+for each row
+begin
+    if new.type = 'student' then
+        if not exists (select 1 from student where id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in student table for type student';
+        end if;
+    elseif new.type = 'instructor' then
+        if not exists (select 1 from instructor where id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in instructor table for type instructor';
+        end if;
+    elseif new.type = 'admin' then
+        if not exists (select 1 from admin where admin_id = new.id) then
+            signal sqlstate '45000'
+            set message_text = 'id does not exist in admin table for type admin';
+        end if;
+    end if;
+end$$
+
+delimiter ;

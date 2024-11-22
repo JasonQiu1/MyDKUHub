@@ -46,7 +46,7 @@ BEGIN
     
     
     -- Step1: check if there is any outstanding payment
-    SELECT due INTO balance_due
+    SELECT due - paid INTO balance_due
     FROM balance
     WHERE student_id = student_id;
     IF balance_due > 0 THEN
@@ -306,9 +306,7 @@ DELIMITER ;
 
 -- Example usage:
 
-CALL enroll_selected_courses('yg202', '55');
-
-
+-- CALL enroll_selected_courses('yg202', '55');
 
 
 -- Here is the trigger on insert in section_time, we need to ensure the classroom is not occupied by two courses
@@ -499,7 +497,7 @@ CREATE PROCEDURE make_payment(
 BEGIN
     DECLARE current_outstanding_due NUMERIC(10, 2);
     
-    SELECT outstanding_due INTO current_outstanding_due
+    SELECT due - paid INTO current_outstanding_due
     FROM balance
     WHERE student_id = student_id;
 
@@ -563,7 +561,7 @@ END$$
 DELIMITER ;
 
 -- example usage
-CALL swap_course('yg202', 55, '56');
+-- CALL swap_course('yg202', 55, '56');
 
 
 

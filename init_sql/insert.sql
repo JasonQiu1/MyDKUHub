@@ -884,4 +884,4 @@ insert into login_info(id, password, type) values
 ('mm940', 123456, 'instructor');
 
 insert into balance (student_id, due, paid)
-values ('yg202', 100000, 0);
+values ('yg202', 100000, 100000);
