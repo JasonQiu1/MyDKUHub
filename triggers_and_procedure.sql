@@ -1,3 +1,4 @@
+
 DROP trigger IF EXISTS check_login_info_before_insert;
 delimiter $$
 create trigger check_login_info_before_insert
@@ -23,8 +24,213 @@ begin
 end$$
 delimiter ;
 
--- Procedure: enrollment
+-- Procedure: entollment
 -- We check the time-conflict,pre+anti+co_requisite,credit_limit,balance,hold,capacity,class_duplication
+
+DROP PROCEDURE IF EXISTS CheckPrereqsMet;
+DELIMITER $$
+
+CREATE PROCEDURE CheckPrereqsMet(
+    IN student_id VARCHAR(50),
+    IN selected_sections TEXT
+)
+BEGIN
+    DECLARE unmet_groups INT;
+    DECLARE error_message VARCHAR(255);
+    DECLARE current_course_id VARCHAR(50);
+    DECLARE current_year INT;
+    DECLARE current_term INT;
+    DECLARE current_session INT;
+    DECLARE section_id VARCHAR(50);
+    DECLARE section_list TEXT;
+    DECLARE pos INT;
+    DECLARE finished INT DEFAULT 0;
+    DECLARE has_prereqs INT;
+
+    -- Initialize section list
+    SET section_list = selected_sections;
+
+    -- Label the loop for ITERATE to reference
+    section_loop: WHILE NOT finished DO
+        -- Extract the next section ID
+        SET pos = LOCATE(',', section_list);
+        IF pos > 0 THEN
+            SET section_id = SUBSTRING(section_list, 1, pos - 1);
+            SET section_list = SUBSTRING(section_list, pos + 1);
+        ELSE
+            SET section_id = section_list;
+            SET finished = 1;
+        END IF;
+
+        -- Fetch the course_id and schedule details for the current section
+        SELECT course_id, year, term, session
+        INTO current_course_id, current_year, current_term, current_session
+        FROM section
+        WHERE id = section_id;
+
+        -- Check if the current course has any prerequisites
+        SELECT COUNT(*) INTO has_prereqs
+        FROM course_req
+        WHERE course_id = current_course_id
+          AND type = 'prereq';
+
+        -- If no prerequisites, continue to the next iteration
+        IF has_prereqs = 0 THEN
+            ITERATE section_loop; -- Skip the rest of the loop and continue
+        END IF;
+
+        -- Check if there are any unmet prerequisite groups
+        SELECT COUNT(*)
+        INTO unmet_groups
+        FROM (
+            SELECT 
+                cr.group_id,
+                COUNT(cr.req_id) - SUM(
+                    CASE 
+                        WHEN e.course_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS unmet_reqs
+            FROM course_req cr
+            LEFT JOIN (
+                SELECT DISTINCT s.course_id
+                FROM enrollment e
+                JOIN section s ON e.section_id = s.id
+                WHERE e.student_id = student_id
+                  AND (s.year < current_year OR
+                       (s.year = current_year AND s.term < current_term) OR
+                       (s.year = current_year AND s.term = current_term AND s.session < current_session))
+            
+                UNION
+                
+                SELECT DISTINCT course_id
+                FROM section
+                WHERE FIND_IN_SET(id, selected_sections) > 0
+                  AND (year < current_year OR
+                       (year = current_year AND term < current_term) OR
+                       (year = current_year AND term = current_term AND session < current_session))
+            
+            ) e ON cr.req_id = e.course_id
+            WHERE cr.course_id = current_course_id
+              AND cr.type = 'prereq'
+            GROUP BY cr.group_id
+            HAVING unmet_reqs = 0
+        ) AS satisfied_groups;
+
+        -- Raise an error if no groups are satisfied
+        IF unmet_groups = 0 THEN
+            SET error_message = CONCAT('No prerequisites met for course: ', current_course_id);
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = error_message;
+        END IF;
+    END WHILE section_loop;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS CheckCoreqsMet;
+DELIMITER $$
+
+CREATE PROCEDURE CheckCoreqsMet(
+    IN student_id VARCHAR(50),
+    IN selected_sections TEXT
+)
+BEGIN
+    DECLARE unmet_groups INT;
+    DECLARE error_message VARCHAR(255);
+    DECLARE current_course_id VARCHAR(50);
+    DECLARE current_year INT;
+    DECLARE current_term INT;
+    DECLARE current_session INT;
+    DECLARE section_id VARCHAR(50);
+    DECLARE section_list TEXT;
+    DECLARE pos INT;
+    DECLARE finished INT DEFAULT 0;
+    DECLARE has_coreqs INT;
+
+    -- Initialize section list
+    SET section_list = selected_sections;
+
+    -- Label the loop for ITERATE to reference
+    section_loop: WHILE NOT finished DO
+        -- Extract the next section ID
+        SET pos = LOCATE(',', section_list);
+        IF pos > 0 THEN
+            SET section_id = SUBSTRING(section_list, 1, pos - 1);
+            SET section_list = SUBSTRING(section_list, pos + 1);
+        ELSE
+            SET section_id = section_list;
+            SET finished = 1;
+        END IF;
+
+        -- Fetch the course_id and schedule details for the current section
+        SELECT course_id, year, term, session
+        INTO current_course_id, current_year, current_term, current_session
+        FROM section
+        WHERE id = section_id;
+
+        -- Check if the current course has any co-requisites
+        SELECT COUNT(*) INTO has_coreqs
+        FROM course_req
+        WHERE course_id = current_course_id
+          AND type = 'coreq';
+
+        -- If no co-requisites, continue to the next iteration
+        IF has_coreqs = 0 THEN
+            ITERATE section_loop; -- Skip the rest of the loop and continue
+        END IF;
+
+        -- Check if there are any unmet co-requisite groups
+        SELECT COUNT(*)
+        INTO unmet_groups
+        FROM (
+            SELECT 
+                cr.group_id,
+                COUNT(cr.req_id) - SUM(
+                    CASE 
+                        WHEN e.course_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS unmet_reqs
+            FROM course_req cr
+            LEFT JOIN (
+                SELECT DISTINCT s.course_id
+                FROM enrollment e
+                JOIN section s ON e.section_id = s.id
+                WHERE e.student_id = student_id
+                  AND (s.year <= current_year AND
+                       (s.year < current_year OR
+                       (s.term <= current_term AND
+                       (s.term < current_term OR
+                       (s.session <= current_session)))))
+                
+                UNION
+                
+                SELECT DISTINCT course_id
+                FROM section
+                WHERE FIND_IN_SET(id, selected_sections) > 0
+                  AND (year <= current_year AND
+                       (year < current_year OR
+                       (term <= current_term AND
+                       (term < current_term OR
+                       (session <= current_session))))) -- Apply co-requisite constraints to selected sections
+            ) e ON cr.req_id = e.course_id
+            WHERE cr.course_id = current_course_id
+              AND cr.type = 'coreq'
+            GROUP BY cr.group_id
+            HAVING unmet_reqs = 0
+        ) AS satisfied_groups;
+
+        -- Raise an error if no groups are satisfied
+        IF unmet_groups = 0 THEN
+            SET error_message = CONCAT('No co-requisites met for course: ', current_course_id);
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = error_message;
+        END IF;
+    END WHILE section_loop;
+END$$
+
+DELIMITER ;
 
 DROP PROCEDURE IF EXISTS enroll_selected_courses;
 
@@ -41,15 +247,10 @@ BEGIN
     DECLARE hold_count BOOLEAN;
     DECLARE over_capacity_count INT;
     DECLARE duplicate_course_count INT;
-    DECLARE total_prereq_groups INT;
-    DECLARE satisfied_prereq_groups INT;
-	DECLARE total_coreq_groups INT;
-	DECLARE satisfied_coreq_groups INT;
     
     
-    
-    -- Step1: check if there is any outstanding payment
-    SELECT outstanding_due INTO balance_due
+    -- check if there is any outstanding payment
+    SELECT due - paid INTO balance_due
     FROM balance
     WHERE student_id = student_id;
     IF balance_due > 0 THEN
@@ -58,7 +259,7 @@ BEGIN
     END IF;
     
 
-    -- Step2: check if there is any hold
+    -- check if there is any hold
 	SELECT COUNT(*) INTO hold_count
     FROM hold
     WHERE student_id = student_id
@@ -69,7 +270,7 @@ BEGIN
     END IF;
 
     
-    -- Step3: check if the student already taken the same course before
+    -- check if the student already taken the same course before
     SET duplicate_course_count = (
         SELECT COUNT(*)
         FROM enrollment e
@@ -84,7 +285,7 @@ BEGIN
     END IF;
 
 
-    -- Step 4: Check time conflict, with the previous enrollment and the current intended enrollments
+    -- Check time conflict, with the previous enrollment and the current intended enrollments
     SET conflict_count = (
         SELECT COUNT(*)
         FROM (
@@ -130,60 +331,21 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Time conflict detected with previously enrolled courses';
     END IF;
+    
 
-	
-     -- Count total prerequisite groups
-	SET total_prereq_groups = (
-		SELECT COUNT(DISTINCT cr.group_id)
-		FROM course_req cr
-		JOIN section s_target ON cr.course_id = s_target.course_id
-		WHERE FIND_IN_SET(s_target.id, selected_sections)
-		  AND cr.type = 'prereq'
-	);
-
-	-- Count satisfied prerequisite groups
-	SET satisfied_prereq_groups = (
-		SELECT COUNT(DISTINCT cr.group_id)
-		FROM course_req cr
-		JOIN section s_req ON cr.req_id = s_req.course_id
-		JOIN section s_target ON cr.course_id = s_target.course_id
-		LEFT JOIN enrollment e ON e.section_id = s_req.id
-		WHERE FIND_IN_SET(s_target.id, selected_sections)
-		  AND cr.type = 'prereq'
-		  AND (
-			  (e.student_id = student_id AND
-			   (s_req.year < s_target.year OR 
-				(s_req.year = s_target.year AND 
-				 (s_req.term < s_target.term OR 
-				  (s_req.term = s_target.term AND s_req.session < s_target.session)))))
-			  OR (FIND_IN_SET(s_req.id, selected_sections)
-				  AND (s_req.year < s_target.year OR 
-					   (s_req.year = s_target.year AND 
-						(s_req.term < s_target.term OR 
-						 (s_req.term = s_target.term AND s_req.session < s_target.session)))))
-		  )
-	);
-
-	-- Compare total and satisfied prerequisite groups
-	IF satisfied_prereq_groups < total_prereq_groups THEN
-		SIGNAL SQLSTATE '45000'
-		SET MESSAGE_TEXT = 'Not all prerequisite groups are satisfied.';
-	END IF;
-
-    -- check anti-requisites
+    CALL CheckPrereqsMet(student_id, selected_sections);
+    CALL CheckCoreqsMet(student_id, selected_sections);
     SET anti_req_violations = (
         SELECT COUNT(*)
         FROM course_req cr
         WHERE cr.course_id IN (SELECT course_id FROM section WHERE FIND_IN_SET(id, selected_sections))
           AND cr.type = 'antireq'
           AND cr.req_id IN (
-              -- Check past enrollments
               SELECT DISTINCT s.course_id
               FROM section s
               JOIN enrollment e ON e.section_id = s.id
               WHERE e.student_id = student_id
               UNION
-              -- Check selected sections
               SELECT DISTINCT s.course_id
               FROM section s
               WHERE FIND_IN_SET(s.id, selected_sections)
@@ -195,44 +357,7 @@ BEGIN
     END IF;
     
 
-     -- Count total co-requisite groups
-	SET total_coreq_groups = (
-		SELECT COUNT(DISTINCT cr.group_id)
-		FROM course_req cr
-		JOIN section s_target ON cr.course_id = s_target.course_id
-		WHERE FIND_IN_SET(s_target.id, selected_sections)
-		  AND cr.type = 'coreq'
-	);
-
-	-- Count satisfied co-requisite groups
-	SET satisfied_coreq_groups = (
-		SELECT COUNT(DISTINCT cr.group_id)
-		FROM course_req cr
-		JOIN section s_req ON cr.req_id = s_req.course_id
-		JOIN section s_target ON cr.course_id = s_target.course_id
-		LEFT JOIN enrollment e ON e.section_id = s_req.id
-		WHERE FIND_IN_SET(s_target.id, selected_sections)
-		  AND cr.type = 'coreq'
-		  AND (
-			  (e.student_id = student_id AND
-			   (s_req.year < s_target.year OR 
-				(s_req.year = s_target.year AND 
-				 (s_req.term < s_target.term OR 
-				  (s_req.term = s_target.term AND s_req.session <= s_target.session)))))
-			  OR (FIND_IN_SET(s_req.id, selected_sections)
-				  AND (s_req.year < s_target.year OR 
-					   (s_req.year = s_target.year AND 
-						(s_req.term < s_target.term OR 
-						 (s_req.term = s_target.term AND s_req.session <= s_target.session)))))
-		  )
-	);
-
-	-- Compare total and satisfied co-requisite groups
-	IF satisfied_coreq_groups < total_coreq_groups THEN
-		SIGNAL SQLSTATE '45000'
-		SET MESSAGE_TEXT = 'Not all co-requisite groups are satisfied.';
-	END IF;
-
+   
     -- check the total credit limit
     WITH selected_credits AS (
         SELECT
@@ -308,20 +433,19 @@ BEGIN
     SET SQL_SAFE_UPDATES = 1; 
     COMMIT;
 
-
-
 END$$
 DELIMITER ;
 
--- Example usage:
-CALL enroll_selected_courses('yg202', '80');
+
+
+CALL enroll_selected_courses('yg202', '55,57,24,80');
+
+
+
 
 
 DROP TRIGGER IF EXISTS check_section_time_insert_validity;
-
 DELIMITER $$
-
-
 
 CREATE TRIGGER check_section_time_insert_validity
 BEFORE INSERT ON section_time
@@ -522,7 +646,7 @@ CREATE PROCEDURE make_payment(
 BEGIN
     DECLARE current_outstanding_due NUMERIC(10, 2);
     
-    SELECT outstanding_due INTO current_outstanding_due
+    SELECT due - paid INTO current_outstanding_due
     FROM balance
     WHERE student_id = student_id;
 
@@ -588,3 +712,10 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+-- example usage
+CALL swap_course('yg202', 55, '56');
+
+
+
