@@ -157,41 +157,47 @@ class ClassResultsScreen(Screen):
             return False, ()
 
         printToScreen(f"Selected courses: {[group[0]['course_name'] for group in selected_course_groups]}")
+        section_ids = ','.join(
+            ','.join(str(course['section_id']) for course in group)
+            for group in selected_course_groups
+        )
 
         action = promptOptions(["Enroll", "Delete"])
         if action[0] == "0":  # Enroll
-            self.enroll_selected_courses(self.session.user_netid, selected_course_groups)
+            self.enroll_selected_courses(self.session.user_netid, section_ids)
         elif action[0] == "1":  # Delete
-            self.delete_selected_courses(self.session.user_netid, selected_course_groups)
+            self.delete_selected_courses(self.session.user_netid, section_ids)
         else:
             printToScreen("Invalid action. Returning to shopping cart.")
             return False, ()
 
         return ScreenType.CLASS_RESULTS, ('shopping',)
 
-    def enroll_selected_courses(self, student_id, selected_course_groups):
-        for course_group in selected_course_groups:
-            section_ids = ','.join(str(course['section_id']) for course in course_group)
-            try:
-                result = self.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
-                if result is None:
-                    return True  
-                else:
-                    printToScreen(f"Enrollment failed with message: {result}")
-                    return False
-            except Exception as e:
-                printToScreen(f"Error during enrollment: {e}")
+    def enroll_selected_courses(self, student_id, section_ids):
+        print(section_ids)
+        try:
+            result = self.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
+            if result is None:
+                return True  
+            else:
+                printToScreen(f"Enrollment failed with message: {result}")
                 return False
+        except Exception as e:
+            printToScreen(f"Error during enrollment: {e}")
+            return False
 
-    def delete_selected_courses(self, student_id, selected_course_groups):
-        for course_group in selected_course_groups:
-            for course in course_group:
-                try:
-                    self.db_connection.execute_update("DELETE FROM shopping WHERE student_id = %s AND section_id = %s",
-                                                      (student_id, course['section_id']))
-                    printToScreen(f"Successfully deleted section {course['section_id']} from shopping cart.")
-                except Exception as e:
-                    printToScreen(f"Error deleting section {course['section_id']}: {e}")
+    def delete_selected_courses(self, student_id, section_ids):
+        try:
+            section_id_list = [int(section_id.strip()) for section_id in section_ids.split(',')]
+            for section_id in section_id_list:
+                self.db_connection.execute_update(
+                    "DELETE FROM shopping WHERE student_id = %s AND section_id = %s",
+                    (student_id, section_id)
+                )
+                printToScreen(f"Successfully deleted section {section_id} from shopping cart.")
+        except Exception as e:
+            printToScreen(f"Error deleting sections: {e}")
+
 
     def group_courses_by_course_id(self, courses):
         grouped_courses = {}
@@ -313,6 +319,7 @@ class ClassSearchScreen(Screen):
         else:
             printToScreen("Invalid index. Skipping department selection.")
             return None
+        
     def get_matching_sections(self, year, term, session, dept_name, instructor_name):
         query = """
         SELECT 
@@ -422,7 +429,6 @@ class ClassSearchScreen(Screen):
             next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids} or 'A' to add to shopping cart:")
             if next_action and next_action[0].lower() == 'e':
                 success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
-                print('scucess', success)
                 if success:
                     printToScreen(f"Successfully enrolled in sections {combined_section_ids}.")
                 else:
@@ -508,6 +514,7 @@ class ClassSearchScreen(Screen):
         return list(selected_sections.values())
 
     def enroll_in_sections(self, student_id, section_ids):
+        print(section_ids)
         try:
             result = self.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
             if result is None:
