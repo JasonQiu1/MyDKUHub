@@ -544,7 +544,7 @@ DELIMITER ;
 
 
 
- CALL enroll_selected_courses('yg202', '55,56');
+-- CALL enroll_selected_courses('yg202', '55,56');
 
 
 
