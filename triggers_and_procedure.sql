@@ -547,8 +547,6 @@ DELIMITER ;
 -- CALL enroll_selected_courses('yg202', '55,56');
 
 
-
-
 DROP TRIGGER IF EXISTS check_section_time_insert_validity;
 DELIMITER $$
 
@@ -778,23 +776,32 @@ END$$
 
 DELIMITER ;
 
-
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS swap_course;
+DROP PROCEDURE IF EXISTS swap_course$$
 CREATE PROCEDURE swap_course(
     IN student_id VARCHAR(50),
-    IN drop_section_id INT, -- The section ID to drop
-    IN enroll_section_ids TEXT -- Comma-separated list of section IDs to enroll
+    IN drop_section_id TEXT, -- The section ID to drop
+    IN enroll_section_id TEXT -- Comma-separated list of section IDs to enroll
 )
 BEGIN
+    
     DECLARE drop_count INT;
+    DECLARE json_drop_sections TEXT;
+    DECLARE json_enroll_sections TEXT;
+
+    -- Ensure proper JSON formatting for the section IDs
+    SET json_drop_sections = CONCAT('[', drop_section_id, ']');
+    CALL GenerateUnionQuery(json_drop_sections);
+
+    SET json_enroll_sections = CONCAT('[', enroll_section_id, ']');
+    CALL GenerateUnionQuery(json_enroll_sections);
 
     -- Step 1: Check if the student is actually enrolled in the course to be dropped
     SELECT COUNT(*) INTO drop_count
     FROM enrollment
     WHERE student_id = student_id
-      AND section_id = drop_section_id;
+      AND FIND_IN_SET(section_id, drop_section_id);
 
     IF drop_count = 0 THEN
         SIGNAL SQLSTATE '45000'
@@ -802,21 +809,66 @@ BEGIN
     END IF;
 
     -- Step 2: Drop the specified course
+    SET SQL_SAFE_UPDATES = 0;
     DELETE FROM enrollment
     WHERE student_id = student_id
-      AND section_id = drop_section_id;
-
+      AND FIND_IN_SET(section_id, drop_section_id);
+    SET SQL_SAFE_UPDATES = 1;
+    
     -- Step 3: Enroll in the new sections
-    CALL enroll_selected_courses(student_id, enroll_section_ids);
+    CALL enroll_selected_courses(student_id, enroll_section_id);
 
     -- Step 4: Log the successful swap
     SELECT CONCAT(
         'Successfully swapped section ', drop_section_id, 
-        ' with new sections: ', enroll_section_ids
+        ' with new sections: ', enroll_section_id
     ) AS swap_status;
+
 END$$
 
 DELIMITER ;
 
+
+
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS drop_course$$
+CREATE PROCEDURE drop_course(
+    IN student_id VARCHAR(50),
+    IN drop_section_id TEXT -- The section IDs to drop, comma-separated
+)
+BEGIN
+    DECLARE drop_count INT;
+    DECLARE json_drop_sections TEXT;
+
+     -- Ensure proper JSON formatting for the section IDs
+    SET json_drop_sections = CONCAT('[', drop_section_id, ']');
+    CALL GenerateUnionQuery(json_drop_sections);
+    
+    -- Step 1: Check if the student is actually enrolled in the course to be dropped
+    SELECT COUNT(*) INTO drop_count
+    FROM enrollment
+    WHERE student_id = student_id
+      AND FIND_IN_SET(section_id, drop_section_id);
+
+    IF drop_count = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Student is not enrolled in the section to be dropped';
+    END IF;
+
+    -- Step 2: Drop the specified course
+    SET SQL_SAFE_UPDATES = 0;
+    DELETE FROM enrollment
+    WHERE student_id = student_id
+      AND FIND_IN_SET(section_id, drop_section_id);
+	SET SQL_SAFE_UPDATES = 1;
+
+
+    -- Step 3: Log the successful drop
+    SELECT CONCAT('Successfully dropped section(s): ', drop_section_id) AS drop_status;
+END$$
+
+DELIMITER ;
 -- example usage
--- CALL swap_course('yg202', 55, '56');
+-- CALL swap_course('yg202', '55,56','24');
