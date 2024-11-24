@@ -49,7 +49,7 @@ class Session:
 
 
 def main():
-    Screen.init_db("localhost", "root", "030108cjf", "PROJ1") # change this
+    Screen.init_db("localhost", "root", "20021108", "proj") # change this
     session = Session()
     session.run()
     return 0
