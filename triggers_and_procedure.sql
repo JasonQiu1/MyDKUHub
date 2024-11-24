@@ -24,8 +24,146 @@ begin
 end$$
 delimiter ;
 
--- Procedure: entollment
--- We check the time-conflict,pre+anti+co_requisite,credit_limit,balance,hold,capacity,class_duplication
+DROP PROCEDURE IF EXISTS GenerateUnionQuery;
+DELIMITER //
+CREATE PROCEDURE GenerateUnionQuery(IN id_list TEXT)
+BEGIN
+    DECLARE finished INT DEFAULT 0;
+    DECLARE id_value INT;
+    DECLARE group_count INT;
+    DECLARE cur CURSOR FOR SELECT id FROM JSON_TABLE(id_list, "$[*]" COLUMNS (id INT PATH "$")) AS jt;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
+    SET @formatted_id_list = CONCAT('(', REPLACE(REPLACE(id_list, '[', ''), ']', ''), ')');
+
+    DROP TABLE IF EXISTS TempSectionTable;
+
+	CREATE TABLE TempSectionTable (
+		section_id INT,
+		section_type VARCHAR(255),
+		course_id VARCHAR(255),
+        term VARCHAR(255),
+        session VARCHAR(255),
+        year VARCHAR(255)
+	);
+    
+    
+    DROP TABLE IF EXISTS TempValidTable;
+
+	CREATE TABLE TempValidTable (
+		course_id VARCHAR(255),
+        term VARCHAR(255),
+        session VARCHAR(255),
+        year VARCHAR(255)
+	);
+    
+    -- Initialize the dynamic query
+    SET @query = '';
+
+    
+    -- Open the cursor
+    OPEN cur;
+
+    read_loop: LOOP
+        FETCH cur INTO id_value;
+        IF finished THEN 
+            LEAVE read_loop;
+        END IF;
+
+        -- Append the SELECT statement for the current ID to the query
+        SET @query = CONCAT(@query, 
+            IF(@query = '', '', ' UNION '), 
+            'SELECT DISTINCT s.id AS section_id, 
+                    s.type AS section_type, 
+                    c.id AS course_id,
+                    s.term,
+					s.session,
+					s.year
+                    
+             FROM section s
+             INNER JOIN course c ON s.course_id = c.id AND s.type = c.type
+             INNER JOIN teaches t ON s.id = t.section_id
+             INNER JOIN instructor i ON t.instructor_id = i.id
+             INNER JOIN classroom cl ON s.building_name = cl.building_name AND s.room_name = cl.room_name
+             INNER JOIN section_time st ON s.id = st.section_id
+             INNER JOIN time_slot ts ON st.time_slot_id = ts.id
+             WHERE c.id IN (
+                 SELECT s1.course_id 
+                 FROM section s1 
+                 WHERE s1.id = ', id_value, ')  
+             AND s.term IN (
+                 SELECT s1.term 
+                 FROM section s1 
+                 WHERE s1.id = ', id_value, ')
+             AND s.session IN (
+                 SELECT s1.session 
+                 FROM section s1 
+                 WHERE s1.id = ', id_value, ')
+             AND s.year IN (
+                 SELECT s1.year 
+                 FROM section s1 
+                 WHERE s1.id = ', id_value, ')
+             GROUP BY 
+                 s.id, s.type, c.id, c.name, c.dept_name, c.credits, 
+                 s.term, s.session, s.year, cl.building_name, cl.room_name'
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE cur;
+
+	SET @query = CONCAT('INSERT INTO TempSectionTable ', @query);
+    -- Execute the dynamically generated query
+    PREPARE stmt FROM @query;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+    
+	-- Prepare the validation query
+	SET @validation_query = CONCAT(
+		'SELECT course_id,
+				 term,
+				 session,
+				 year
+		 FROM (
+			 SELECT 
+				 course_id,
+				 term,
+				 session,
+				 year,
+				 GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) AS required_types,
+				 GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type) AS selected_types,
+				 CASE 
+					 WHEN GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) = GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type)
+					 AND COUNT(CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END) = COUNT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END)
+					 THEN ''VALID''
+					 ELSE ''INVALID''
+				 END AS coverage_status
+			 FROM TempSectionTable
+			 GROUP BY course_id, term, session, year
+		 ) AS validation_result
+		 WHERE coverage_status = ''INVALID'' '
+	);
+	-- Execute the validation query
+    SET @validation_query = CONCAT('INSERT INTO TempValidTable ', @validation_query);
+	PREPARE stmt_validation FROM @validation_query;
+	EXECUTE stmt_validation;
+	DEALLOCATE PREPARE stmt_validation;
+
+    IF group_count > 0 THEN
+			SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'Time conflict detected with previously enrolled courses';
+	END IF;
+    
+    SET group_count = (SELECT COUNT(*) FROM TempValidTable);
+    IF group_count > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Not all sub_lectures are selected';
+    END IF;
+    
+    DROP TABLE IF EXISTS TempSectionTable;
+    DROP TABLE IF EXISTS TempValidTable;
+    
+END //
+DELIMITER ;
 
 DROP PROCEDURE IF EXISTS CheckPrereqsMet;
 DELIMITER $$
@@ -247,7 +385,12 @@ BEGIN
     DECLARE hold_count BOOLEAN;
     DECLARE over_capacity_count INT;
     DECLARE duplicate_course_count INT;
+	DECLARE json_selected_sections TEXT;
+
     
+	SET json_selected_sections = CONCAT('[', selected_sections, ']');
+
+	CALL GenerateUnionQuery(json_selected_sections);
     
     -- check if there is any outstanding payment
     SELECT due - paid INTO balance_due
@@ -438,8 +581,7 @@ DELIMITER ;
 
 
 
-CALL enroll_selected_courses('yg202', '55,57,24,80');
-
+-- CALL enroll_selected_courses('yg202', '55,56');
 
 
 
@@ -543,16 +685,16 @@ END$$
 
 DELIMITER ;
 
-insert into section (course_id, type, term, session, year, capacity, building_name, room_name) values 
-('COMPSCI 101', 'SEM', 'Fall', 'first', 2024, 60, 'IB', '3106');
+-- insert into section (course_id, type, term, session, year, capacity, building_name, room_name) values 
+-- ('COMPSCI 101', 'SEM', 'Fall', 'first', 2024, 60, 'IB', '3106');
 
-insert into section_time (section_id, time_slot_id, day) values 
-(973, 4, 'Mon');
+-- insert into section_time (section_id, time_slot_id, day) values 
+-- (973, 4, 'Mon');
 
-UPDATE section_time
-SET time_slot_id = 7,
-    day = 'tue'
-WHERE section_id = 2;
+-- UPDATE section_time
+-- SET time_slot_id = 7,
+--     day = 'tue'
+-- WHERE section_id = 2;
 
 
 DROP TRIGGER IF EXISTS check_teaches_insert;
@@ -715,7 +857,5 @@ DELIMITER ;
 
 
 -- example usage
-CALL swap_course('yg202', 55, '56');
-
-
+-- CALL swap_course('yg202', 55, '56');
 
