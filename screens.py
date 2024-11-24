@@ -40,7 +40,7 @@ class LoginScreen(Screen):
         self.session.user_level = userLevel
         self.session.user_name = userName  
         self.session.user_netid = username[0]
-        return ScreenType.HOME, ()
+        return ScreenType.HOME, (self.session.user_level,)
 
     def login(self, username, password):
         query = """
@@ -61,17 +61,24 @@ class LoginScreen(Screen):
         return None, None
 
 
+
 # User home screen. 
 # Shows different options based on the session's userLevel.
 class HomeScreen(Screen):
-    def __init__(self, session):
+    def __init__(self, session, user_level):
         super().__init__(session)
         # TODO: create options based on the userLevel
-        self.optionsToScreen = {
-                "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
-                "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('shopping',)), 
-                "View My Classes": (ScreenType.CLASS_RESULTS, ('enrolled',)),
-                "Manage Enrollment": (ScreenType.MANAGE_ENROLLMENT, ()),
+        if user_level == 'student':
+            self.optionsToScreen = {
+                    "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
+                    "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('shopping',)), 
+                    "View My Classes": (ScreenType.CLASS_RESULTS, ('enrolled',)),
+                    "Manage Enrollment": (ScreenType.MANAGE_ENROLLMENT, ()),
+                    }
+        elif user_level == 'instructor':
+            self.optionsToScreen = {
+                    "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
+                    "View Teaching Classes": (ScreenType.TEACHING_CLASSES, ()),
                 }
         
     def draw(self):
@@ -91,7 +98,7 @@ class HomeScreen(Screen):
                 return self.optionsToScreen[option][0], (self.optionsToScreen[option][1])
 
         printToScreen("Invalid option, please try again.")
-        return ScreenType.HOME, ()
+        return ScreenType.HOME, (self.session.user_level,)
     
 class ClassResultsScreen(Screen):
     def __init__(self, session, context):
@@ -114,13 +121,13 @@ class ClassResultsScreen(Screen):
             return
 
         self.display_courses(courses)
-
+    
     def prompt(self):
         if self.context == 'shopping':
             return self.handle_shopping_cart_actions()
         printToScreen("Press ENTER to return to the Home Screen.")
         input()  
-        return ScreenType.HOME, ()
+        return ScreenType.HOME, (self.session.user_level,)
 
 
     def handle_shopping_cart_actions(self):
@@ -129,7 +136,7 @@ class ClassResultsScreen(Screen):
 
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -184,17 +191,29 @@ class ClassResultsScreen(Screen):
                     printToScreen(f"Successfully deleted section {course['section_id']} from shopping cart.")
                 except Exception as e:
                     printToScreen(f"Error deleting section {course['section_id']}: {e}")
-
-    def group_courses_by_course_id(self, courses):
-        grouped_courses = {}
-        for course in courses:
-            course_id = course['course_id']
-            if course_id not in grouped_courses:
-                grouped_courses[course_id] = []
-            grouped_courses[course_id].append(course)
-        return grouped_courses
-
-
+    def get_shopping_courses(self, student_id):
+        query = """
+        SELECT 
+            c.id AS course_id,
+            c.type AS type,
+            c.name AS course_name,
+            c.dept_name,
+            c.credits,
+            s.term,
+            s.session,
+            s.year,
+            s.id AS section_id,
+            i.first_name AS instructor_first_name,
+            i.last_name AS instructor_last_name
+        FROM shopping sh
+        JOIN section s ON sh.section_id = s.id
+        JOIN course c ON s.course_id = c.id AND s.type = c.type
+        JOIN teaches t ON s.id = t.section_id
+        JOIN instructor i ON t.instructor_id = i.id
+        WHERE sh.student_id = %s
+        ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
+        """
+        return self.db_connection.execute_query(query, (student_id,))
     
 class ClassSearchScreen(Screen):
     def __init__(self, session):
@@ -210,12 +229,12 @@ class ClassSearchScreen(Screen):
         year = getUserInput("Enter year (e.g., 2024)")
         if not year or not year[0].isdigit():
             printToScreen("Invalid year. Returning to Home Screen.")
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         term = getUserInput("Enter term (e.g., spring, fall, summer)")
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         session = getUserInput("Enter session (first, second, semester, mini, or press ENTER for all)")
         session = session[0].lower() if session else None
@@ -231,9 +250,21 @@ class ClassSearchScreen(Screen):
             self.display_sections(sections)
         else:
             printToScreen("No matching sections found.")
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         return self.prompt_action()
+
+    def display_sections(self, sections):
+        self.sections_map.clear()  # Reset sections map
+        for idx, section in enumerate(sections):
+            self.sections_map[idx] = section  # Store entire section details
+            schedule = section['course_schedule'] or "No schedule available"
+            printToScreen(
+                f"{idx}: Course: {section['course_name']} ({section['course_id']}) - {section['dept_name']} - {section['credits']} credits\n"
+                f"    Section ID: {section['section_id']} ({section['type']}) - Term: {section['term']} {section['session']} {section['year']}\n"
+                f"    Instructors: {section['instructors']} - Location: {section['building_name']} {section['room_name']}\n"
+                f"    Schedule: {schedule}\n"
+            )
 
     def select_department(self):
 
@@ -258,88 +289,11 @@ class ClassSearchScreen(Screen):
             printToScreen("Invalid index. Skipping department selection.")
             return None
         
-    def get_matching_sections(self, year, term, session, dept_name, instructor_name):
-        query = """
-        SELECT 
-            c.id AS course_id,
-            c.name AS course_name,
-            c.dept_name,
-            c.credits,
-            s.id AS section_id,
-            s.type AS section_type,
-            s.term,
-            s.session,
-            s.year,
-            s.capacity,
-            cl.building_name,
-            cl.room_name,
-            GROUP_CONCAT(
-                DISTINCT CONCAT(i.first_name, ' ', i.last_name)
-                ORDER BY i.first_name, i.last_name SEPARATOR '/'
-            ) AS instructors,
-            GROUP_CONCAT(
-                DISTINCT CONCAT(st.day, ' ', DATE_FORMAT(ts.start_time, '%H:%i'), '-', DATE_FORMAT(ts.end_time, '%H:%i'))
-                ORDER BY ts.start_time SEPARATOR ', '
-            ) AS course_schedule
-        FROM section s
-        JOIN course c ON s.course_id = c.id AND s.type = c.type
-        JOIN teaches t ON s.id = t.section_id
-        JOIN instructor i ON t.instructor_id = i.id
-        JOIN classroom cl ON s.building_name = cl.building_name AND s.room_name = cl.room_name
-        JOIN section_time st ON s.id = st.section_id
-        JOIN time_slot ts ON st.time_slot_id = ts.id
-        WHERE s.year = %s AND s.term = %s
-        """
-        params = [year, term]
-
-        if session:
-            query += " AND s.session = %s"
-            params.append(session)
-
-        if dept_name:
-            query += " AND c.dept_name = %s"
-            params.append(dept_name)
-
-        if instructor_name:
-            query += """
-            AND s.id IN (
-                SELECT s_inner.id
-                FROM section s_inner
-                JOIN teaches t_inner ON s_inner.id = t_inner.section_id
-                JOIN instructor i_inner ON t_inner.instructor_id = i_inner.id
-                WHERE CONCAT(i_inner.first_name, ' ', i_inner.last_name) LIKE %s
-            )
-            """
-            params.append(f"%{instructor_name}%")
-
-        query += """
-        GROUP BY 
-            c.id, c.name, c.dept_name, c.credits, 
-            s.id, s.type, s.term, s.session, s.year, s.capacity, 
-            cl.building_name, cl.room_name
-        ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
-        """
-
-        return self.db_connection.execute_query(query, tuple(params))
-
-    def display_sections(self, sections):
-        self.sections_map.clear()  # Reset sections map
-        for idx, section in enumerate(sections):
-            self.sections_map[idx] = section  # Store entire section details
-            schedule = section['course_schedule'] or "No schedule available"
-            printToScreen(
-                f"{idx}: Course: {section['course_name']} ({section['course_id']}) - {section['dept_name']} - {section['credits']} credits\n"
-                f"    Section ID: {section['section_id']} ({section['section_type']}) - Term: {section['term']} {section['session']} {section['year']}\n"
-                f"    Instructors: {section['instructors']} - Location: {section['building_name']} {section['room_name']}\n"
-                f"    Schedule: {schedule}\n"
-            )
-
-
     def prompt_action(self):
         while True:  
             action = getUserInput("Enter the index of the section to see related sections, or press ENTER to return:")
             if not action or not action[0].isdigit():
-                return ScreenType.HOME, ()  
+                return ScreenType.HOME, (self.session.user_level,)  
             
             idx = int(action[0])
             if idx not in self.sections_map:
@@ -385,7 +339,6 @@ class ClassSearchScreen(Screen):
             else:
                 printToScreen("Invalid action. Please try again.")
 
-    
     def get_related_sections(self, course_id, term, session, year):
         query = """
         SELECT 
@@ -490,7 +443,6 @@ class ManageEnrollment(Screen):
         if not enrolled_courses:
             printToScreen("You are not enrolled in any courses.")
             return
-
         self.display_courses(enrolled_courses)
 
     def prompt(self):
@@ -501,17 +453,7 @@ class ManageEnrollment(Screen):
         elif action[0] == "1":  # Swap Course
             return self.handle_swap_course()
         else:  # Return to Home
-            return ScreenType.HOME, ()
-
-    def group_courses_by_course_id(self, courses):
-        grouped_courses = {}
-        for course in courses:
-            course_id = course['course_id']
-            if course_id not in grouped_courses:
-                grouped_courses[course_id] = []
-            grouped_courses[course_id].append(course)
-        return grouped_courses
-
+            return ScreenType.HOME, (self.session.user_level,)
     
     def handle_drop_course(self):
         courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
@@ -519,7 +461,7 @@ class ManageEnrollment(Screen):
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -550,12 +492,11 @@ class ManageEnrollment(Screen):
 
     def handle_swap_course(self):
         courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
-        print(courses)
         grouped_courses = self.group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, ()
+            return ScreenType.HOME, (self.session.user_level,)
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -599,7 +540,6 @@ class ManageEnrollment(Screen):
         return ScreenType.MANAGE_ENROLLMENT, ()
 
     def drop_course(self, student_id, section_ids):
-        print(section_ids)
         try:
             result = self.db_connection.execute_procedure("drop_course", (student_id, section_ids))
             if result is None:
@@ -624,6 +564,132 @@ class ManageEnrollment(Screen):
             printToScreen(f"Error during swap: {e}")
             return False
         
+class ViewTeachingClassesScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+        self.sections = []
 
-    
-    
+    def draw(self):
+        printToScreen(f"Teaching Classes for {self.session.user_name}:")
+        self.prompt_for_filters()
+
+    def prompt(self):
+        action = getUserInput("Press ENTER to return to the Home Screen.")
+        return ScreenType.HOME, (self.session.user_level,)
+
+    def prompt_for_filters(self):
+        year = getUserInput("Enter year (e.g., 2024): ")
+        if not year or not year[0].isdigit():
+            printToScreen("Invalid year. Returning to Home Screen.")
+            return ScreenType.HOME, (self.session.user_level,)
+        term = getUserInput("Enter term (e.g., spring, fall, summer): ")
+        if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
+            printToScreen("Invalid term. Returning to Home Screen.")
+            return ScreenType.HOME, (self.session.user_level,)
+        self.sections = self.get_matching_sections(year[0], term[0].lower(), None, None, self.session.user_name)
+
+        if not self.sections:
+            printToScreen("No classes found for the selected term and year.")
+            return ScreenType.HOME, (self.session.user_level,)
+
+        self.display_courses(self.sections, instructor=False)
+        self.prompt_for_course_selection()
+
+    def prompt_for_course_selection(self):
+        while True:
+            course_input = getUserInput("Enter the index of a course to view or grade students, or press ENTER to return:")
+            if not course_input or not course_input[0].isdigit():
+                return ScreenType.HOME, (self.session.user_level,)
+
+            selected_index = int(course_input[0]) - 1
+            grouped_courses = self.group_courses_by_course_id(self.sections)
+
+            if selected_index < 0 or selected_index >= len(grouped_courses):
+                printToScreen("Invalid selection. Please try again.")
+                continue
+
+            selected_course = list(grouped_courses.values())[selected_index]
+            self.display_and_grade_students(selected_course)
+            return ScreenType.HOME, (self.session.user_level,)
+
+
+    def display_and_grade_students(self, course_sections):
+        section_ids = [section['section_id'] for section in course_sections]
+        while True:
+            students = self.get_students_in_sections(section_ids)
+            if not students:
+                printToScreen("No students enrolled in this course.")
+                return
+            merged_students = self.merge_students_by_id(students)
+
+            printToScreen(f"Students Enrolled in {course_sections[0]['course_name']}:")
+            for idx, student in enumerate(merged_students):
+                printToScreen(
+                    f"{idx + 1}. {student['first_name']} {student['last_name']} - {student['student_id']} - Grade: {student.get('grade', 'N/A')}"
+                )
+
+            student_input = getUserInput("Enter the index of a student to change their grade, or press ENTER to return:")
+            if not student_input or not student_input[0].isdigit():
+                return
+
+            selected_index = int(student_input[0]) - 1
+            if selected_index < 0 or selected_index >= len(merged_students):
+                printToScreen("Invalid selection. Please try again.")
+                continue
+
+            selected_student = merged_students[selected_index]
+            self.prompt_for_grade_change(section_ids, selected_student)
+
+
+    def merge_students_by_id(self, students):
+        merged = {}
+        for student in students:
+            student_id = student['student_id']
+            if student_id not in merged:
+                merged[student_id] = {
+                    "student_id": student['student_id'],
+                    "first_name": student['first_name'],
+                    "last_name": student['last_name'],
+                    "grade": student.get('grade', 'N/A'),
+                    "section_ids": []
+                }
+            merged[student_id]["section_ids"].append(student['section_id'])
+
+        return list(merged.values())
+
+    def prompt_for_grade_change(self, section_ids, student):
+        new_grade = getUserInput(f"Enter the new grade for {student['first_name']} {student['last_name']} (or press ENTER to cancel):")
+        if not new_grade:
+            printToScreen("Grade change canceled.")
+            return
+
+        self.update_student_grades(section_ids, student['student_id'], new_grade[0])
+
+    def update_student_grades(self, section_ids, student_id, grade):
+        query = """
+        UPDATE enrollment
+        SET grade = %s
+        WHERE student_id = %s AND section_id = %s
+        """
+        try:
+            for section_id in section_ids:
+                self.db_connection.execute_update(query, (grade, student_id, section_id))
+            printToScreen(f"Successfully updated the grade for {student_id} to {grade} across all relevant sections.")
+        except Exception as e:
+            printToScreen(f"Failed to update grade: {e}")
+
+
+    def get_students_in_sections(self, section_ids):
+        query = f"""
+        SELECT 
+            s.id AS student_id,
+            s.first_name,
+            s.last_name,
+            e.grade,
+            e.section_id
+        FROM enrollment e
+        JOIN student s ON e.student_id = s.id
+        WHERE e.section_id IN ({','.join(['%s'] * len(section_ids))})
+        ORDER BY s.last_name, s.first_name;
+        """
+        return self.db_connection.execute_query(query, tuple(section_ids))

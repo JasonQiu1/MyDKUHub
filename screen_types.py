@@ -6,8 +6,9 @@ class ScreenType(Enum):
     HOME = auto(),
     CLASS_SEARCH = auto(),
     CLASS_RESULTS = auto(),
+    TEACHING_CLASSES = auto()
     USER_INFORMATION = auto(),
     ROSTER = auto(),
     ADVISEES = auto(),
     MANAGE_ENROLLMENT = auto(),
-    EXIT = auto(),
+    EXIT = auto()

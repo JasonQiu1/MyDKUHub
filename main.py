@@ -9,6 +9,7 @@ screenTypeToScreenClass = {
     ScreenType.CLASS_SEARCH: ClassSearchScreen,
     ScreenType.CLASS_RESULTS: ClassResultsScreen,
     ScreenType.MANAGE_ENROLLMENT: ManageEnrollment,
+    ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
     #ScreenType.USER_INFORMATION: ,
     #ScreenType.ROSTER: ,
     #ScreenType.ADVISEES: ,
