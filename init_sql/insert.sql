@@ -809,11 +809,7 @@ insert into credit_limit(student_id, year, term, session, credit_limit) values
 ('jq48', 2023, 'Spring', 'first', 21),
 ('jq48', 2023, 'Spring', 'second', 21);
 
-drop table if exists course_division;
-create table course_division (
-    course_id varchar(50) primary key,
-    division enum('Art and Humanity', 'Natural Science', 'Social Science') not null
-);
+
 
 insert into course_division (course_id, division)
 select distinct(id), 'Natural Science'

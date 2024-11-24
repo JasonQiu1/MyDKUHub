@@ -8,6 +8,7 @@ drop table if exists credit_limit;
 drop table if exists section_time;
 drop table if exists teaches;
 drop table if exists section;
+drop table if exists course_division;
 drop table if exists subcourse;
 drop table if exists course_req;
 drop table if exists course;
@@ -249,29 +250,12 @@ create table hold (
         on update cascade
 );
 
+create table course_division (
+    course_id varchar(50) primary key,
+    division enum('Art and Humanity', 'Natural Science', 'Social Science') not null,
+		foreign key (course_id) references course(id) 
+        on delete cascade on update cascade
+		
+);
 
-delimiter $$
 
-create trigger check_login_info_before_insert
-before insert on login_info
-for each row
-begin
-    if new.type = 'student' then
-        if not exists (select 1 from student where id = new.id) then
-            signal sqlstate '45000'
-            set message_text = 'id does not exist in student table for type student';
-        end if;
-    elseif new.type = 'instructor' then
-        if not exists (select 1 from instructor where id = new.id) then
-            signal sqlstate '45000'
-            set message_text = 'id does not exist in instructor table for type instructor';
-        end if;
-    elseif new.type = 'admin' then
-        if not exists (select 1 from admin where admin_id = new.id) then
-            signal sqlstate '45000'
-            set message_text = 'id does not exist in admin table for type admin';
-        end if;
-    end if;
-end$$
-
-delimiter ;
