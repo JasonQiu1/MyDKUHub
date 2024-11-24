@@ -195,30 +195,6 @@ class ClassResultsScreen(Screen):
         return grouped_courses
 
 
-    def get_shopping_courses(self, student_id):
-        query = """
-        SELECT 
-            c.id AS course_id,
-            c.type AS type,
-            c.name AS course_name,
-            c.dept_name,
-            c.credits,
-            s.term,
-            s.session,
-            s.year,
-            s.id AS section_id,
-            i.first_name AS instructor_first_name,
-            i.last_name AS instructor_last_name
-        FROM shopping sh
-        JOIN section s ON sh.section_id = s.id
-        JOIN course c ON s.course_id = c.id AND s.type = c.type
-        JOIN teaches t ON s.id = t.section_id
-        JOIN instructor i ON t.instructor_id = i.id
-        WHERE sh.student_id = %s
-        ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
-        """
-        return self.db_connection.execute_query(query, (student_id,))
-
     
 class ClassSearchScreen(Screen):
     def __init__(self, session):
