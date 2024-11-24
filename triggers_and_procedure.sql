@@ -30,36 +30,13 @@ CREATE PROCEDURE GenerateUnionQuery(IN id_list TEXT)
 BEGIN
     DECLARE finished INT DEFAULT 0;
     DECLARE id_value INT;
-    DECLARE group_count INT;
     DECLARE cur CURSOR FOR SELECT id FROM JSON_TABLE(id_list, "$[*]" COLUMNS (id INT PATH "$")) AS jt;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
     SET @formatted_id_list = CONCAT('(', REPLACE(REPLACE(id_list, '[', ''), ']', ''), ')');
 
-    DROP TABLE IF EXISTS TempSectionTable;
-
-	CREATE TABLE TempSectionTable (
-		section_id INT,
-		section_type VARCHAR(255),
-		course_id VARCHAR(255),
-        term VARCHAR(255),
-        session VARCHAR(255),
-        year VARCHAR(255)
-	);
-    
-    
-    DROP TABLE IF EXISTS TempValidTable;
-
-	CREATE TABLE TempValidTable (
-		course_id VARCHAR(255),
-        term VARCHAR(255),
-        session VARCHAR(255),
-        year VARCHAR(255)
-	);
-    
     -- Initialize the dynamic query
     SET @query = '';
 
-    
     -- Open the cursor
     OPEN cur;
 
@@ -76,9 +53,8 @@ BEGIN
                     s.type AS section_type, 
                     c.id AS course_id,
                     s.term,
-					s.session,
-					s.year
-                    
+                    s.session,
+                    s.year
              FROM section s
              INNER JOIN course c ON s.course_id = c.id AND s.type = c.type
              INNER JOIN teaches t ON s.id = t.section_id
@@ -101,69 +77,56 @@ BEGIN
              AND s.year IN (
                  SELECT s1.year 
                  FROM section s1 
-                 WHERE s1.id = ', id_value, ')
-             GROUP BY 
-                 s.id, s.type, c.id, c.name, c.dept_name, c.credits, 
-                 s.term, s.session, s.year, cl.building_name, cl.room_name'
+                 WHERE s1.id = ', id_value, ')'
         );
     END LOOP;
 
     -- Close the cursor
     CLOSE cur;
 
-	SET @query = CONCAT('INSERT INTO TempSectionTable ', @query);
-    -- Execute the dynamically generated query
-    PREPARE stmt FROM @query;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-    
-	-- Prepare the validation query
-	SET @validation_query = CONCAT(
-		'SELECT course_id,
-				 term,
-				 session,
-				 year
-		 FROM (
-			 SELECT 
-				 course_id,
-				 term,
-				 session,
-				 year,
-				 GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) AS required_types,
-				 GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type) AS selected_types,
-				 CASE 
-					 WHEN GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) = GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type)
-					 AND COUNT(CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END) = COUNT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END)
-					 THEN ''VALID''
-					 ELSE ''INVALID''
-				 END AS coverage_status
-			 FROM TempSectionTable
-			 GROUP BY course_id, term, session, year
-		 ) AS validation_result
-		 WHERE coverage_status = ''INVALID'' '
-	);
-	-- Execute the validation query
-    SET @validation_query = CONCAT('INSERT INTO TempValidTable ', @validation_query);
-	PREPARE stmt_validation FROM @validation_query;
-	EXECUTE stmt_validation;
-	DEALLOCATE PREPARE stmt_validation;
+    -- Use the generated query in a CTE for TempSectionTable
+    SET @cte_section = CONCAT(
+        'WITH TempSectionTable AS (', @query, '),
+        TempValidTable AS (
+            SELECT course_id,
+                   term,
+                   session,
+                   year
+            FROM (
+                SELECT 
+                    course_id,
+                    term,
+                    session,
+                    year,
+                    GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) AS required_types,
+                    GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type) AS selected_types,
+                    CASE 
+                        WHEN GROUP_CONCAT(DISTINCT section_type ORDER BY section_type) = GROUP_CONCAT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type ELSE NULL END ORDER BY section_type)
+                        AND COUNT(CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END) = COUNT(DISTINCT CASE WHEN section_id IN ', @formatted_id_list, ' THEN section_type END)
+                        THEN ''VALID''
+                        ELSE ''INVALID''
+                    END AS coverage_status
+                FROM TempSectionTable
+                GROUP BY course_id, term, session, year
+            ) AS validation_result
+            WHERE coverage_status = ''INVALID''
+        )
+        SELECT COUNT(*) INTO @group_count FROM TempValidTable;'
+    );
 
-    IF group_count > 0 THEN
-			SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Time conflict detected with previously enrolled courses';
-	END IF;
-    
-    SET group_count = (SELECT COUNT(*) FROM TempValidTable);
-    IF group_count > 0 THEN
+    -- Execute the CTE query
+    PREPARE stmt_cte FROM @cte_section;
+    EXECUTE stmt_cte;
+    DEALLOCATE PREPARE stmt_cte;
+
+    -- Handle validation results
+    IF @group_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Not all sub_lectures are selected';
     END IF;
-    
-    DROP TABLE IF EXISTS TempSectionTable;
-    DROP TABLE IF EXISTS TempValidTable;
-    
 END //
 DELIMITER ;
+
 
 DROP PROCEDURE IF EXISTS CheckPrereqsMet;
 DELIMITER $$
@@ -581,7 +544,7 @@ DELIMITER ;
 
 
 
--- CALL enroll_selected_courses('yg202', '55,56');
+ CALL enroll_selected_courses('yg202', '55,56');
 
 
 
@@ -855,7 +818,5 @@ END$$
 
 DELIMITER ;
 
-
 -- example usage
 -- CALL swap_course('yg202', 55, '56');
-
