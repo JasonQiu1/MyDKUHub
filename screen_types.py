@@ -9,4 +9,5 @@ class ScreenType(Enum):
     USER_INFORMATION = auto(),
     ROSTER = auto(),
     ADVISEES = auto(),
+    MANAGE_ENROLLMENT = auto(),
     EXIT = auto(),
