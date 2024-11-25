@@ -323,28 +323,34 @@ class ClassSearchScreen(Screen):
             combined_section_ids = ', '.join(map(str, selected_section_ids))  
 
             if self.session.user_level == 'student':
-                next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart:")
-
-                if next_action and next_action[0].lower() == 'e':
-                    success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
-                    print('scucess', success)
-                    if success:
-                        printToScreen(f"Successfully enrolled in sections {combined_section_ids}.")
-                    else:
-                        printToScreen(f"Failed to enroll in sections {combined_section_ids}.")
-                
-                elif next_action and next_action[0].lower() == 'a':
-                    success = self.add_to_shopping_cart(self.session.user_netid, combined_section_ids)
-                    if success:
-                        printToScreen(f"Successfully added sections {combined_section_ids} to your shopping cart.")
-                    else:
-                        printToScreen(f"Failed to add sections {combined_section_ids} to your shopping cart.")
-                else:
-                    printToScreen("Invalid action. Please try again.")
+                self.student_manage_sections_prompt(combined_section_ids)
             elif self.session.user_level == 'instructor':
                 printToScreen()
             elif self.session.user_level == 'admin':
                 printToScreen()
+    
+    def student_manage_sections_prompt(self, combined_section_ids):
+        next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart:")
+        if next_action and next_action[0].lower() == 'e':
+            success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
+            print('scucess', success)
+            if success:
+                printToScreen(f"Successfully enrolled in sections {combined_section_ids}.")
+            else:
+                printToScreen(f"Failed to enroll in sections {combined_section_ids}.")
+                
+        elif next_action and next_action[0].lower() == 'a':
+            success = self.add_to_shopping_cart(self.session.user_netid, combined_section_ids)
+            if success:
+                printToScreen(f"Successfully added sections {combined_section_ids} to your shopping cart.")
+            else:
+                printToScreen(f"Failed to add sections {combined_section_ids} to your shopping cart.")
+        else:
+            printToScreen("Invalid action. Please try again.")
+    
+    def admin_manage_sections_prompt(self, combined_section_ids):
+        printToScreen("Admin manage sections prompt")
+        pass
 
     def get_related_sections(self, course_id, term, session, year):
         query = """
