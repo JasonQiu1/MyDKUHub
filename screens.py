@@ -74,11 +74,15 @@ class HomeScreen(Screen):
                     "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('shopping',)), 
                     "View My Classes": (ScreenType.CLASS_RESULTS, ('enrolled',)),
                     "Manage Enrollment": (ScreenType.MANAGE_ENROLLMENT, ()),
-                    }
+                }
         elif user_level == 'instructor':
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
                     "View Teaching Classes": (ScreenType.TEACHING_CLASSES, ()),
+                }
+        elif user_level == 'admin':
+            self.optionsToScreen = {
+                    "Manage Classes": (ScreenType.CLASS_SEARCH, ()), 
                 }
         
     def draw(self):
@@ -317,27 +321,30 @@ class ClassSearchScreen(Screen):
                 continue
 
             combined_section_ids = ', '.join(map(str, selected_section_ids))  
-            
-            next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart, or 'S' to select for swapping:")
 
-            if next_action and next_action[0].lower() == 'e':
-                success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
-                print('scucess', success)
-                if success:
-                    printToScreen(f"Successfully enrolled in sections {combined_section_ids}.")
+            if self.session.user_level == 'student':
+                next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart:")
+
+                if next_action and next_action[0].lower() == 'e':
+                    success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
+                    print('scucess', success)
+                    if success:
+                        printToScreen(f"Successfully enrolled in sections {combined_section_ids}.")
+                    else:
+                        printToScreen(f"Failed to enroll in sections {combined_section_ids}.")
+                
+                elif next_action and next_action[0].lower() == 'a':
+                    success = self.add_to_shopping_cart(self.session.user_netid, combined_section_ids)
+                    if success:
+                        printToScreen(f"Successfully added sections {combined_section_ids} to your shopping cart.")
+                    else:
+                        printToScreen(f"Failed to add sections {combined_section_ids} to your shopping cart.")
                 else:
-                    printToScreen(f"Failed to enroll in sections {combined_section_ids}.")
-            elif next_action and next_action[0].lower() == 's': 
-                return ScreenType.CLASS_RESULTS, [combined_section_ids]
-            
-            elif next_action and next_action[0].lower() == 'a':
-                success = self.add_to_shopping_cart(self.session.user_netid, combined_section_ids)
-                if success:
-                    printToScreen(f"Successfully added sections {combined_section_ids} to your shopping cart.")
-                else:
-                    printToScreen(f"Failed to add sections {combined_section_ids} to your shopping cart.")
-            else:
-                printToScreen("Invalid action. Please try again.")
+                    printToScreen("Invalid action. Please try again.")
+            elif self.session.user_level == 'instructor':
+                printToScreen()
+            elif self.session.user_level == 'admin':
+                printToScreen()
 
     def get_related_sections(self, course_id, term, session, year):
         query = """
