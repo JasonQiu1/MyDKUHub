@@ -11,4 +11,6 @@ class ScreenType(Enum):
     ROSTER = auto(),
     ADVISEES = auto(),
     MANAGE_ENROLLMENT = auto(),
+    PERSONAL_INFORMATION = auto(),
+    MY_ACADEMIC_PROGRESS=auto,
     EXIT = auto()
