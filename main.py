@@ -9,7 +9,9 @@ screenTypeToScreenClass = {
     ScreenType.CLASS_SEARCH: ClassSearchScreen,
     ScreenType.CLASS_RESULTS: ClassResultsScreen,
     ScreenType.MANAGE_ENROLLMENT: ManageEnrollment,
+    ScreenType.PERSONAL_INFORMATION: PersonalInformationScreen,
     ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
+    ScreenType.MY_ACADEMIC_PROGRESS: ShowMyProgressScreen,
     #ScreenType.USER_INFORMATION: ,
     #ScreenType.ROSTER: ,
     #ScreenType.ADVISEES: ,
@@ -50,7 +52,7 @@ class Session:
 
 
 def main():
-    Screen.init_db("localhost", "root", "20021108", "proj") # change this
+    Screen.init_db("localhost", "root", "030108cjf", "PROJ1") # change this
     session = Session()
     session.run()
     return 0
