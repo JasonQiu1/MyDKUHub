@@ -247,16 +247,21 @@ class ClassSearchScreen(Screen):
         instructor_name = getUserInput("Enter instructor name (or press ENTER to skip)")
         instructor_name = instructor_name[0] if instructor_name else None
 
-        sections = self.get_matching_sections(year[0], term[0].lower(), session, dept_name, instructor_name)
+        self.sections = self.get_matching_sections(year[0], term[0].lower(), session, dept_name, instructor_name)
 
-        if sections:
+        if self.sections:
             printToScreen("Matching Sections:")
-            self.display_sections(sections)
+            if self.session.user_level == 'student' or self.session.user_level == 'instructor':
+                self.display_sections(self.sections)
+                return self.prompt_action()
+            else:
+                self.display_courses(self.sections, instructor=False)
+                return self.prompt_action_admin()
         else:
             printToScreen("No matching sections found.")
             return ScreenType.HOME, (self.session.user_level,)
 
-        return self.prompt_action()
+
 
     def display_sections(self, sections):
         self.sections_map.clear()  # Reset sections map
@@ -326,8 +331,7 @@ class ClassSearchScreen(Screen):
                 self.student_manage_sections_prompt(combined_section_ids)
             elif self.session.user_level == 'instructor':
                 printToScreen()
-            elif self.session.user_level == 'admin':
-                printToScreen()
+
     
     def student_manage_sections_prompt(self, combined_section_ids):
         next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart:")
@@ -348,9 +352,10 @@ class ClassSearchScreen(Screen):
         else:
             printToScreen("Invalid action. Please try again.")
     
-    def admin_manage_sections_prompt(self, combined_section_ids):
+    def prompt_action_admin(self):
         printToScreen("Admin manage sections prompt")
-        pass
+        return ScreenType.HOME, (self.session.user_level,)
+        
 
     def get_related_sections(self, course_id, term, session, year):
         query = """

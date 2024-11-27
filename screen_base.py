@@ -97,6 +97,7 @@ class Screen:
                                 f"{subcourse['credits']} credits")
                 else:
                     printToScreen(f"   - {subcourse['type']} (Section ID: {subcourse['section_id']}) - "
+                                f"Instructor: {subcourse['instructors']} - "
                                 f"{subcourse['credits']} credits")
                 
 
