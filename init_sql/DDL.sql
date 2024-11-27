@@ -1,3 +1,4 @@
+USE PROJ1;
 drop table if exists login_info;
 drop table if exists balance;
 drop table if exists enrollment;
@@ -180,14 +181,15 @@ create table shopping (
 create table enrollment (
     student_id varchar(10),
     section_id int,
-    grade varchar(1),
+    grade varchar(5),
     primary key (student_id, section_id),
     foreign key (student_id) references student(id)
         on delete cascade
         on update cascade,
     foreign key (section_id) references section(id)
         on delete cascade
-        on update cascade
+        on update cascade,
+	CONSTRAINT check_grade_validity CHECK (grade IN ('A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F', 'NC', 'CR'))
 );
 
 create table phone_number (
@@ -215,6 +217,7 @@ create table address (
     street_number varchar(20) not null,
     unit varchar(20),
     primary key (id),
+    UNIQUE (student_id, type),
     foreign key (student_id) references student(id)
         on delete cascade
         on update cascade
@@ -257,5 +260,4 @@ create table course_division (
         on delete cascade on update cascade
 		
 );
-
 
