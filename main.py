@@ -12,6 +12,13 @@ screenTypeToScreenClass = {
     ScreenType.PERSONAL_INFORMATION: PersonalInformationScreen,
     ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
     ScreenType.MY_ACADEMIC_PROGRESS: ShowMyProgressScreen,
+
+    
+    ScreenType.ADMIN: AdminScreen,
+    ScreenType.MANAGE_INSTRUCTOR: ManageInstructorScreen,
+    ScreenType.MANAGE_DEPARTMENT: ManageDepartmentScreen,
+    ScreenType.MANAGE_STUDENT: ManageStudentScreen,
+    ScreenType.MANAGE_COURSE: ManageCourseScreen,
     #ScreenType.USER_INFORMATION: ,
     #ScreenType.ROSTER: ,
     #ScreenType.ADVISEES: ,
