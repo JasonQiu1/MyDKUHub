@@ -12,5 +12,10 @@ class ScreenType(Enum):
     ADVISEES = auto(),
     MANAGE_ENROLLMENT = auto(),
     PERSONAL_INFORMATION = auto(),
-    MY_ACADEMIC_PROGRESS=auto,
+    MY_ACADEMIC_PROGRESS=auto(),
+    ADMIN=auto(),
+    MANAGE_INSTRUCTOR=auto(),
+    MANAGE_DEPARTMENT=auto(),
+    MANAGE_STUDENT=auto(),
+    MANAGE_COURSE=auto(),
     EXIT = auto()
