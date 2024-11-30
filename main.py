@@ -5,38 +5,15 @@ from os import getenv
 from dotenv import load_dotenv
 
 from db import *
-from screens import *
-
-# Maps screen types to their classes
-screenTypeToScreenClass = {
-    ScreenType.LOGIN: LoginScreen,
-    ScreenType.HOME: HomeScreen,
-    ScreenType.CLASS_SEARCH: ClassSearchScreen,
-    ScreenType.CLASS_RESULTS: ClassResultsScreen,
-    ScreenType.MANAGE_ENROLLMENT: ManageEnrollment,
-    ScreenType.PERSONAL_INFORMATION: PersonalInformationScreen,
-    ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
-    ScreenType.MY_ACADEMIC_PROGRESS: ShowMyProgressScreen,
-
-    
-    ScreenType.ADMIN: AdminScreen,
-    ScreenType.MANAGE_INSTRUCTOR: ManageInstructorScreen,
-    ScreenType.MANAGE_DEPARTMENT: ManageDepartmentScreen,
-    ScreenType.MANAGE_STUDENT: ManageStudentScreen,
-    ScreenType.MANAGE_COURSE: ManageCourseScreen,
-    #ScreenType.USER_INFORMATION: ,
-    #ScreenType.ROSTER: ,
-    #ScreenType.ADVISEES: ,
-    ScreenType.EXIT: ExitScreen,     
-}
+from screens import ScreenType, screenTypeToScreenClass, entryScreenType
 
 # Handles screen switching logic and is the main interface for the program.
 class Session:
     def __init__(self, db_connection):
         self.db_connection = db_connection
 
-        self.screenType = ScreenType.LOGIN
-        self.screen = LoginScreen(self)
+        self.screenType = entryScreenType
+        self.screen = screenTypeToScreenClass[self.screenType](self)
         self.user_level = None
         self.user_name = None
         self.user_netid = None
@@ -62,7 +39,7 @@ class Session:
                 self.db_connection.close()
 
     def drawScreenSpacer(self):
-        printToScreen("-----------------------")
+        print("-----------------------")
 
 
 def main():
