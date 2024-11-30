@@ -1,6 +1,6 @@
 # Base classes and utilities functions for Screens.
 
-from screen_types import *
+from screens.types import *
 from db_connection import DBConnection
 
 # Return the stripped user input split by spaces.
