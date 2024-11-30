@@ -1,10 +1,13 @@
-# Concrete implementations for all screens.
+# Concrete implementations screens not organized into other files
 
 from db_connection import DBConnection
 import plotext as plt
 
 from screens.base import *
+from screens.ui import *
 from screens.types import *
+
+from screens.db_util import *
     
 class ClassResultsScreen(Screen):
     def __init__(self, session, context):
@@ -14,7 +17,7 @@ class ClassResultsScreen(Screen):
     def draw(self):
         if self.context == 'enrolled':
             printToScreen(f"Enrolled Courses for {self.session.user_name}:")
-            courses = self.get_enrolled_courses(self.session.user_netid)
+            courses = get_enrolled_courses(self.db_connection, self.session.user_netid)
         elif self.context == 'shopping':
             printToScreen(f"Shopping Cart for {self.session.user_name}:")
             courses = self.get_shopping_courses(self.session.user_netid)
@@ -26,7 +29,7 @@ class ClassResultsScreen(Screen):
             printToScreen("No courses found.")
             return
 
-        self.display_courses(courses)
+        display_courses(courses)
     
     def prompt(self):
         if self.context == 'shopping':
@@ -38,7 +41,7 @@ class ClassResultsScreen(Screen):
 
     def handle_shopping_cart_actions(self):
         courses = self.get_shopping_courses(self.session.user_netid)
-        grouped_courses = self.group_courses_by_course_id(courses)
+        grouped_courses = group_courses_by_course_id(courses)
 
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
@@ -149,7 +152,7 @@ class ClassSearchScreen(Screen):
         instructor_name = getUserInput("Enter instructor name (or press ENTER to skip)")
         instructor_name = instructor_name[0] if instructor_name else None
 
-        self.sections = self.get_matching_sections(year[0], term[0].lower(), session, dept_name, instructor_name)
+        self.sections = get_matching_sections(self.db_connection, year[0], term[0].lower(), session, dept_name, instructor_name)
 
         if self.sections:
             printToScreen("Matching Sections:")
@@ -157,7 +160,7 @@ class ClassSearchScreen(Screen):
                 self.display_sections(self.sections)
                 return self.prompt_action()
             else:
-                self.display_courses(self.sections, instructor=False)
+                display_courses(self.sections, instructor=False)
                 return self.prompt_action_admin()
         else:
             printToScreen("No matching sections found.")
@@ -358,12 +361,12 @@ class ManageEnrollment(Screen):
 
     def draw(self):
         printToScreen(f"Manage Enrollment for {self.session.user_name}:")
-        enrolled_courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
+        enrolled_courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
 
         if not enrolled_courses:
             printToScreen("You are not enrolled in any courses.")
             return
-        self.display_courses(enrolled_courses)
+        display_courses(enrolled_courses)
 
     def prompt(self):
         action = promptOptions(["Drop Course", "Swap Course", "Return to Home"])
@@ -376,8 +379,8 @@ class ManageEnrollment(Screen):
             return ScreenType.HOME, ()
     
     def handle_drop_course(self):
-        courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
-        grouped_courses = self.group_courses_by_course_id(courses)
+        courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
@@ -411,8 +414,8 @@ class ManageEnrollment(Screen):
         return ScreenType.MANAGE_ENROLLMENT, ()
 
     def handle_swap_course(self):
-        courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
-        grouped_courses = self.group_courses_by_course_id(courses)
+        courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
@@ -506,13 +509,13 @@ class ViewTeachingClassesScreen(Screen):
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
             return ScreenType.HOME, ()
-        self.sections = self.get_matching_sections(year[0], term[0].lower(), None, None, self.session.user_name)
+        self.sections = get_matching_sections(self.db_connection, year[0], term[0].lower(), None, None, self.session.user_name)
 
         if not self.sections:
             printToScreen("No classes found for the selected term and year.")
             return ScreenType.HOME, ()
 
-        self.display_courses(self.sections, instructor=False)
+        display_courses(self.sections, instructor=False)
         self.prompt_for_course_selection()
 
     def prompt_for_course_selection(self):
@@ -522,7 +525,7 @@ class ViewTeachingClassesScreen(Screen):
                 return ScreenType.HOME, ()
 
             selected_index = int(course_input[0]) - 1
-            grouped_courses = self.group_courses_by_course_id(self.sections)
+            grouped_courses = group_courses_by_course_id(self.sections)
 
             if selected_index < 0 or selected_index >= len(grouped_courses):
                 printToScreen("Invalid selection. Please try again.")

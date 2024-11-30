@@ -1,3 +1,5 @@
+# All screen types available.
+
 from enum import Enum, auto
 
 # All screens available in the app.

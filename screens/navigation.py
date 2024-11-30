@@ -1,6 +1,7 @@
 from enum import StrEnum, auto
 
 from screens.base import *
+from screens.ui import *
 from screens.types import ScreenType
 
 # An exit screen. 
