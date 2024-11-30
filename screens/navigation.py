@@ -53,7 +53,7 @@ class LoginScreen(Screen):
         LEFT JOIN instructor i ON li.id = i.id
         WHERE li.id = %s AND li.password = %s
         """
-        result = self.db_connection.execute_query(query, (username, password))
+        result = self.session.db_connection.execute_query(query, (username, password))
         if result:
             return result[0]['type'], result[0]['user_name']
         return None, None

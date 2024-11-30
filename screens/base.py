@@ -1,16 +1,9 @@
 # Base class for Screen.
 
 from screens.types import *
-from db_connection import DBConnection
 
 # An abstract screen which can print stuff, get user input, and redirect to other screens.
 class Screen:
-    
-    db_connection = None
-    @classmethod
-    def init_db(cls, host, user, password, database):
-        cls.db_connection = DBConnection(host, user, password, database)
-        cls.db_connection.connect()
 
     # IF YOU OVERRIDE THIS, MAKE SURE TO CALL super().__init__(session)
     def __init__(self, session):

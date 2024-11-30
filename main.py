@@ -4,6 +4,7 @@ from os import getenv
 
 from dotenv import load_dotenv
 
+from db import *
 from screens import *
 
 # Maps screen types to their classes
@@ -31,7 +32,9 @@ screenTypeToScreenClass = {
 
 # Handles screen switching logic and is the main interface for the program.
 class Session:
-    def __init__(self):
+    def __init__(self, db_connection):
+        self.db_connection = db_connection
+
         self.screenType = ScreenType.LOGIN
         self.screen = LoginScreen(self)
         self.user_level = None
@@ -55,8 +58,8 @@ class Session:
                     print("An error occurred:", e)
                 self.drawScreenSpacer()
         finally:
-            if Screen.db_connection:
-                Screen.db_connection.close()
+            if self.db_connection:
+                self.db_connection.close()
 
     def drawScreenSpacer(self):
         printToScreen("-----------------------")
@@ -64,8 +67,14 @@ class Session:
 
 def main():
     load_dotenv()
-    Screen.init_db(getenv("DB_IP"), getenv("DB_USER"), getenv("DB_PASSWORD"), getenv("DB_NAME"))
-    session = Session()
+    db_connection = DBConnection(getenv("DB_IP"), getenv("DB_USER"), getenv("DB_PASSWORD"), getenv("DB_NAME"))
+    db_connection.connect()
+
+    # TODO: Add error handling for if the DB connection failed
+
+    # TODO: Add add prompt to init the DB if the connection succeeds but the DB does not exist
+
+    session = Session(db_connection)
     session.run()
     return 0
 

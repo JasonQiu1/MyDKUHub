@@ -1,13 +1,12 @@
 # Concrete implementations screens not organized into other files
 
-from db_connection import DBConnection
 import plotext as plt
 
 from screens.base import *
 from screens.ui import *
 from screens.types import *
 
-from screens.db_util import *
+from db.utils import *
     
 class ClassResultsScreen(Screen):
     def __init__(self, session, context):
@@ -17,7 +16,7 @@ class ClassResultsScreen(Screen):
     def draw(self):
         if self.context == 'enrolled':
             printToScreen(f"Enrolled Courses for {self.session.user_name}:")
-            courses = get_enrolled_courses(self.db_connection, self.session.user_netid)
+            courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid)
         elif self.context == 'shopping':
             printToScreen(f"Shopping Cart for {self.session.user_name}:")
             courses = self.get_shopping_courses(self.session.user_netid)
@@ -81,7 +80,7 @@ class ClassResultsScreen(Screen):
         for course_group in selected_course_groups:
             section_ids = ','.join(str(course['section_id']) for course in course_group)
             try:
-                result = self.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
+                result = self.session.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
                 if result is None:
                     return True  
                 else:
@@ -95,7 +94,7 @@ class ClassResultsScreen(Screen):
         for course_group in selected_course_groups:
             for course in course_group:
                 try:
-                    self.db_connection.execute_update("DELETE FROM shopping WHERE student_id = %s AND section_id = %s",
+                    self.session.db_connection.execute_update("DELETE FROM shopping WHERE student_id = %s AND section_id = %s",
                                                       (student_id, course['section_id']))
                     printToScreen(f"Successfully deleted section {course['section_id']} from shopping cart.")
                 except Exception as e:
@@ -122,7 +121,7 @@ class ClassResultsScreen(Screen):
         WHERE sh.student_id = %s
         ORDER BY s.year DESC, s.term, s.session, c.id, c.credits DESC;
         """
-        return self.db_connection.execute_query(query, (student_id,))
+        return self.session.db_connection.execute_query(query, (student_id,))
     
 class ClassSearchScreen(Screen):
     def __init__(self, session):
@@ -152,7 +151,7 @@ class ClassSearchScreen(Screen):
         instructor_name = getUserInput("Enter instructor name (or press ENTER to skip)")
         instructor_name = instructor_name[0] if instructor_name else None
 
-        self.sections = get_matching_sections(self.db_connection, year[0], term[0].lower(), session, dept_name, instructor_name)
+        self.sections = get_matching_sections(self.session.db_connection, year[0], term[0].lower(), session, dept_name, instructor_name)
 
         if self.sections:
             printToScreen("Matching Sections:")
@@ -183,7 +182,7 @@ class ClassSearchScreen(Screen):
     def select_department(self):
 
         query = "SELECT name FROM dept"
-        departments = self.db_connection.execute_query(query)
+        departments = self.session.db_connection.execute_query(query)
         if not departments:
             printToScreen("No departments found.")
             return None
@@ -297,7 +296,7 @@ class ClassSearchScreen(Screen):
             s.term, s.session, s.year, cl.building_name, cl.room_name
         ORDER BY s.type, s.id
         """
-        return self.db_connection.execute_query(query, (course_id, term, session, year))
+        return self.session.db_connection.execute_query(query, (course_id, term, session, year))
 
     def select_related_sections(self, related_sections):
         selected_sections = {}
@@ -334,7 +333,7 @@ class ClassSearchScreen(Screen):
 
     def enroll_in_sections(self, student_id, section_ids):
         try:
-            result = self.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
+            result = self.session.db_connection.execute_procedure("enroll_selected_courses", (student_id, section_ids))
             if result is None:
                 return True  
             else:
@@ -348,7 +347,7 @@ class ClassSearchScreen(Screen):
         query = "INSERT INTO shopping (student_id, section_id) VALUES (%s, %s)"
         try:
             for section_id in section_ids.split(', '):
-                self.db_connection.execute_update(query, (student_id, section_id))
+                self.session.db_connection.execute_update(query, (student_id, section_id))
             return True
         except Exception as e:
             printToScreen(f"Error adding to shopping cart: {e}")
@@ -361,7 +360,7 @@ class ManageEnrollment(Screen):
 
     def draw(self):
         printToScreen(f"Manage Enrollment for {self.session.user_name}:")
-        enrolled_courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        enrolled_courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
 
         if not enrolled_courses:
             printToScreen("You are not enrolled in any courses.")
@@ -379,7 +378,7 @@ class ManageEnrollment(Screen):
             return ScreenType.HOME, ()
     
     def handle_drop_course(self):
-        courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
         grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
@@ -414,7 +413,7 @@ class ManageEnrollment(Screen):
         return ScreenType.MANAGE_ENROLLMENT, ()
 
     def handle_swap_course(self):
-        courses = get_enrolled_courses(self.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
         grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
@@ -464,7 +463,7 @@ class ManageEnrollment(Screen):
 
     def drop_course(self, student_id, section_ids):
         try:
-            result = self.db_connection.execute_procedure("drop_course", (student_id, section_ids))
+            result = self.session.db_connection.execute_procedure("drop_course", (student_id, section_ids))
             if result is None:
                 return True  
             else:
@@ -477,7 +476,7 @@ class ManageEnrollment(Screen):
     def swap_course(self, student_id, drop_section_id, enroll_section_id):
         printToScreen({drop_section_id,enroll_section_id})
         try:
-            result = self.db_connection.execute_procedure("swap_course", (student_id, drop_section_id,enroll_section_id))
+            result = self.session.db_connection.execute_procedure("swap_course", (student_id, drop_section_id,enroll_section_id))
             if result is None:
                 return True  
             else:
@@ -509,7 +508,7 @@ class ViewTeachingClassesScreen(Screen):
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
             return ScreenType.HOME, ()
-        self.sections = get_matching_sections(self.db_connection, year[0], term[0].lower(), None, None, self.session.user_name)
+        self.sections = get_matching_sections(self.session.db_connection, year[0], term[0].lower(), None, None, self.session.user_name)
 
         if not self.sections:
             printToScreen("No classes found for the selected term and year.")
@@ -596,7 +595,7 @@ class ViewTeachingClassesScreen(Screen):
         """
         try:
             for section_id in section_ids:
-                self.db_connection.execute_update(query, (grade, student_id, section_id))
+                self.session.db_connection.execute_update(query, (grade, student_id, section_id))
             printToScreen(f"Successfully updated the grade for {student_id} to {grade} across all relevant sections.")
         except Exception as e:
             printToScreen(f"Failed to update grade: {e}")
@@ -615,7 +614,7 @@ class ViewTeachingClassesScreen(Screen):
         WHERE e.section_id IN ({','.join(['%s'] * len(section_ids))})
         ORDER BY s.last_name, s.first_name;
         """
-        return self.db_connection.execute_query(query, tuple(section_ids))
+        return self.session.db_connection.execute_query(query, tuple(section_ids))
     
     
 
@@ -657,7 +656,7 @@ class PersonalInformationScreen(Screen):
         FROM student
         WHERE id = %s
         """
-        student_info = self.db_connection.execute_query(query_student, (user_id,))
+        student_info = self.session.db_connection.execute_query(query_student, (user_id,))
         if not student_info:
             return None
 
@@ -666,7 +665,7 @@ class PersonalInformationScreen(Screen):
         FROM phone_number
         WHERE student_id = %s
         """
-        phone_numbers = self.db_connection.execute_query(query_phone, (user_id,))
+        phone_numbers = self.session.db_connection.execute_query(query_phone, (user_id,))
         phones = "\n".join(
             f"{p['type'].capitalize()} Phone: +{p['country_code']} ({p['area_code']}) {p['number']}"
             for p in phone_numbers
@@ -677,7 +676,7 @@ class PersonalInformationScreen(Screen):
         FROM address
         WHERE student_id = %s
         """
-        address_results = self.db_connection.execute_query(query_address, (user_id,))
+        address_results = self.session.db_connection.execute_query(query_address, (user_id,))
         addresses = "\n".join(
             f"{a['type'].capitalize()} Address: {a['street_number']} {a['street']}, Unit {a.get('unit', 'N/A')}, "
             f"{a['city']}, {a['province']}, {a['country']}, ZIP: {a['zip_code']}"
@@ -714,7 +713,7 @@ class PersonalInformationScreen(Screen):
         FROM phone_number
         WHERE student_id = %s AND type = %s
         """
-        phone_numbers = self.db_connection.execute_query(query, (self.session.user_netid, phone_type[0].lower()))
+        phone_numbers = self.session.db_connection.execute_query(query, (self.session.user_netid, phone_type[0].lower()))
         
         if not phone_numbers:
             printToScreen(f"No {phone_type[0]} phone numbers found. Returning to Personal Information.")
@@ -757,7 +756,7 @@ class PersonalInformationScreen(Screen):
         WHERE id = %s
         """
         try:
-            updated = self.db_connection.execute_update(
+            updated = self.session.db_connection.execute_update(
                 update_query,
                 (country_code[0], area_code[0], number[0], selected_phone_id)
             )
@@ -780,7 +779,7 @@ class PersonalInformationScreen(Screen):
         FROM phone_number
         WHERE student_id = %s AND type = %s
         """
-        phone_numbers = self.db_connection.execute_query(query, (self.session.user_netid, phone_type[0].lower()))
+        phone_numbers = self.session.db_connection.execute_query(query, (self.session.user_netid, phone_type[0].lower()))
 
         if not phone_numbers:
             printToScreen(f"No {phone_type[0]} phone numbers found. Returning to Personal Information.")
@@ -807,7 +806,7 @@ class PersonalInformationScreen(Screen):
         WHERE id = %s
         """
         try:
-            deleted = self.db_connection.execute_update(delete_query, (selected_phone_id,))
+            deleted = self.session.db_connection.execute_update(delete_query, (selected_phone_id,))
             if deleted:
                 printToScreen("Phone number deleted successfully.")
             else:
@@ -843,7 +842,7 @@ class PersonalInformationScreen(Screen):
         """
 
         try:
-            self.db_connection.execute_update(
+            self.session.db_connection.execute_update(
                 query,
                 (self.session.user_netid, phone_type[0].lower(), country_code[0], area_code[0], number[0])
             )
@@ -884,7 +883,7 @@ class PersonalInformationScreen(Screen):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         try:
-            self.db_connection.execute_update(
+            self.session.db_connection.execute_update(
                 query,
                 (
                     self.session.user_netid, address_type[0].lower(),
@@ -902,7 +901,7 @@ class PersonalInformationScreen(Screen):
         FROM address
         WHERE student_id = %s
         """
-        addresses = self.db_connection.execute_query(query, (self.session.user_netid,))
+        addresses = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         if not addresses:
             printToScreen("No addresses found. Returning to Personal Information.")
             return
@@ -941,7 +940,7 @@ class PersonalInformationScreen(Screen):
         WHERE id = %s
         """
         try:
-            self.db_connection.execute_update(
+            self.session.db_connection.execute_update(
                 query,
                 (
                     country[0], province[0], city[0], zip_code[0] if zip_code else None,
@@ -958,7 +957,7 @@ class PersonalInformationScreen(Screen):
         FROM address
         WHERE student_id = %s
         """
-        addresses = self.db_connection.execute_query(query, (self.session.user_netid,))
+        addresses = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         if not addresses:
             printToScreen("No addresses found. Returning to Personal Information.")
             return
@@ -988,7 +987,7 @@ class PersonalInformationScreen(Screen):
         WHERE id = %s
         """
         try:
-            self.db_connection.execute_update(query, (selected_address_id,))
+            self.session.db_connection.execute_update(query, (selected_address_id,))
             printToScreen("Address deleted successfully.")
         except Exception as e:
             printToScreen(f"Failed to delete address: {e}")
@@ -1060,7 +1059,7 @@ class ShowMyProgressScreen(Screen):
         WHERE e.student_id = %s AND e.grade NOT IN ('F', 'NC')
         GROUP BY cd.division
         """
-        results = self.db_connection.execute_query(query, (self.session.user_netid,))
+        results = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         return {row['division']: row['total_credits'] for row in results}
 
     def get_total_credits(self):
@@ -1071,7 +1070,7 @@ class ShowMyProgressScreen(Screen):
         JOIN course c ON s.course_id = c.id
         WHERE e.student_id = %s AND e.grade NOT IN ('F', 'NC')
         """
-        result = self.db_connection.execute_query(query, (self.session.user_netid,))
+        result = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         return result[0]['total_credits'] if result else 0
 
     def calculate_gpa(self):
@@ -1086,7 +1085,7 @@ class ShowMyProgressScreen(Screen):
         JOIN course c ON s.course_id = c.id
         WHERE e.student_id = %s
         """
-        results = self.db_connection.execute_query(query, (self.session.user_netid,))
+        results = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         total_points = sum(grade_to_points[row['grade']] * float(row['credits']) for row in results if row['grade'] in grade_to_points)
         total_credits = sum(float(row['credits']) for row in results if row['grade'] in grade_to_points)
         return total_points / total_credits if total_credits > 0 else 0.0
@@ -1103,7 +1102,7 @@ class ShowMyProgressScreen(Screen):
         JOIN course c ON s.course_id = c.id
         WHERE e.student_id = %s
         """
-        results = self.db_connection.execute_query(query, (self.session.user_netid,))
+        results = self.session.db_connection.execute_query(query, (self.session.user_netid,))
         gpa_by_year_term = {}
         for row in results:
             year, term, grade, credits = row['year'], row['term'], row['grade'], float(row['credits'])
@@ -1222,7 +1221,7 @@ class ManageInstructorScreen(Screen):
         FROM instructor
         WHERE first_name LIKE %s AND last_name LIKE %s
         """
-        results = self.db_connection.execute_query(query, (first_name_filter, last_name_filter))
+        results = self.session.db_connection.execute_query(query, (first_name_filter, last_name_filter))
 
         # Check if results were found
         if not results:
@@ -1257,7 +1256,7 @@ class ManageInstructorScreen(Screen):
 
         # Fetch all valid departments
         dept_query = "SELECT name FROM dept"
-        departments = self.db_connection.execute_query(dept_query)
+        departments = self.session.db_connection.execute_query(dept_query)
         if not departments:
             printToScreen("No departments found. Please add departments first.")
             return
@@ -1293,7 +1292,7 @@ class ManageInstructorScreen(Screen):
         """
         try:
             # Execute update query
-            self.db_connection.execute_update(update_query, (
+            self.session.db_connection.execute_update(update_query, (
                 new_first_name[0] if new_first_name else None,
                 new_last_name[0] if new_last_name else None,
                 new_dept if new_dept else None,
@@ -1314,7 +1313,7 @@ class ManageInstructorScreen(Screen):
         
         # Retrieve and display all departments for selection
         dept_query = "SELECT name FROM dept"
-        departments = self.db_connection.execute_query(dept_query)
+        departments = self.session.db_connection.execute_query(dept_query)
         if not departments:
             printToScreen("No departments found. Cannot add instructor.")
             return
@@ -1345,7 +1344,7 @@ class ManageInstructorScreen(Screen):
         VALUES (%s, %s, %s, %s, %s, %s)
         """
         try:
-            self.db_connection.execute_update(insert_query, (
+            self.session.db_connection.execute_update(insert_query, (
                 id[0], first_name[0], last_name[0], dept,
                 salary[0] if salary[0].isdigit() else None,
                 int(is_duke[0]) if is_duke and is_duke[0] in ["1", "0"] else None
@@ -1365,7 +1364,7 @@ class ManageInstructorScreen(Screen):
         FROM instructor
         WHERE first_name LIKE %s AND last_name LIKE %s
         """
-        search_results = self.db_connection.execute_query(
+        search_results = self.session.db_connection.execute_query(
             search_query, 
             (f"%{first_name[0]}%" if first_name else "%", f"%{last_name[0]}%" if last_name else "%")
         )
@@ -1401,7 +1400,7 @@ class ManageInstructorScreen(Screen):
             WHERE id = %s
             """
             try:
-                self.db_connection.execute_update(delete_query, (instructor_id,))
+                self.session.db_connection.execute_update(delete_query, (instructor_id,))
                 printToScreen("Instructor deleted successfully.")
             except Exception as e:
                 printToScreen(f"Failed to delete instructor: {e}")
@@ -1460,7 +1459,7 @@ class ManageCourseScreen(Screen):
         FROM course c
         WHERE c.id LIKE %s
         """
-        courses = self.db_connection.execute_query(query, (f"%{course_id[0]}%",))
+        courses = self.session.db_connection.execute_query(query, (f"%{course_id[0]}%",))
 
         if not courses:
             printToScreen("No courses found with the given ID.")
@@ -1512,7 +1511,7 @@ class ManageCourseScreen(Screen):
         """
         try:
             # Update course table
-            self.db_connection.execute_update(update_query, (
+            self.session.db_connection.execute_update(update_query, (
                 new_name if new_name else None,
                 new_type[0] if new_type else None,
                 new_dept,
@@ -1528,7 +1527,7 @@ class ManageCourseScreen(Screen):
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE division = VALUES(division)
                 """
-                self.db_connection.execute_update(division_query, (course_id, new_division))
+                self.session.db_connection.execute_update(division_query, (course_id, new_division))
 
             printToScreen("Course information updated successfully.")
         except Exception as e:
@@ -1563,7 +1562,7 @@ class ManageCourseScreen(Screen):
 
         try:
             # Insert course
-            self.db_connection.execute_update(insert_query, (
+            self.session.db_connection.execute_update(insert_query, (
                 course_id, course_name, course_type[0], course_dept,
                 float(course_credits[0]) if course_credits and course_credits[0].isdigit() else 0.0,
                 course_description
@@ -1571,7 +1570,7 @@ class ManageCourseScreen(Screen):
 
             # Insert course division
             if course_division:
-                self.db_connection.execute_update(division_query, (course_id, course_division))
+                self.session.db_connection.execute_update(division_query, (course_id, course_division))
 
             printToScreen("Course added successfully.")
         except Exception as e:
@@ -1586,7 +1585,7 @@ class ManageCourseScreen(Screen):
         FROM course c
         WHERE c.id LIKE %s
         """
-        courses = self.db_connection.execute_query(query, (f"%{course_id[0]}%",))
+        courses = self.session.db_connection.execute_query(query, (f"%{course_id[0]}%",))
 
         if not courses:
             printToScreen("No courses found with the given ID.")
@@ -1622,14 +1621,14 @@ class ManageCourseScreen(Screen):
         DELETE FROM course WHERE id = %s
         """
         try:
-            self.db_connection.execute_update(delete_query, (selected_course['id'],))
+            self.session.db_connection.execute_update(delete_query, (selected_course['id'],))
             printToScreen("Course deleted successfully.")
         except Exception as e:
             printToScreen(f"Failed to delete course: {e}")
 
     def select_department(self):
         query = "SELECT name FROM dept"
-        departments = self.db_connection.execute_query(query)
+        departments = self.session.db_connection.execute_query(query)
         if not departments:
             printToScreen("No departments found.")
             return None
