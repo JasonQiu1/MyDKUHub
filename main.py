@@ -1,5 +1,9 @@
 # Main driver with application logic.
 
+from os import getenv
+
+from dotenv import load_dotenv
+
 from screens import *
 
 # Maps screen types to their classes
@@ -59,7 +63,8 @@ class Session:
 
 
 def main():
-    Screen.init_db("localhost", "root", "030108cjf", "PROJ1") # change this
+    load_dotenv()
+    Screen.init_db(getenv("DB_IP"), getenv("DB_USER"), getenv("DB_PASSWORD"), getenv("DB_NAME"))
     session = Session()
     session.run()
     return 0
