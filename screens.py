@@ -40,7 +40,7 @@ class LoginScreen(Screen):
         self.session.user_level = userLevel
         self.session.user_name = userName  
         self.session.user_netid = username[0]
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
 
     def login(self, username, password):
         query = """
@@ -65,9 +65,10 @@ class LoginScreen(Screen):
 # User home screen. 
 # Shows different options based on the session's userLevel.
 class HomeScreen(Screen):
-    def __init__(self, session, user_level):
+    def __init__(self, session):
         super().__init__(session)
         # TODO: create options based on the userLevel
+        user_level = self.session.user_level
         if user_level == 'student':
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
@@ -105,7 +106,7 @@ class HomeScreen(Screen):
                 return self.optionsToScreen[option][0], (self.optionsToScreen[option][1])
 
         printToScreen("Invalid option, please try again.")
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
     
 class ClassResultsScreen(Screen):
     def __init__(self, session, context):
@@ -134,7 +135,7 @@ class ClassResultsScreen(Screen):
             return self.handle_shopping_cart_actions()
         printToScreen("Press ENTER to return to the Home Screen.")
         input()  
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
 
 
     def handle_shopping_cart_actions(self):
@@ -143,7 +144,7 @@ class ClassResultsScreen(Screen):
 
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -236,12 +237,12 @@ class ClassSearchScreen(Screen):
         year = getUserInput("Enter year (e.g., 2024)")
         if not year or not year[0].isdigit():
             printToScreen("Invalid year. Returning to Home Screen.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         term = getUserInput("Enter term (e.g., spring, fall, summer)")
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         session = getUserInput("Enter session (first, second, semester, mini, or press ENTER for all)")
         session = session[0].lower() if session else None
@@ -262,7 +263,7 @@ class ClassSearchScreen(Screen):
                 return self.prompt_action_admin()
         else:
             printToScreen("No matching sections found.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
 
 
@@ -305,7 +306,7 @@ class ClassSearchScreen(Screen):
         while True:  
             action = getUserInput("Enter the index of the section to see related sections, or press ENTER to return:")
             if not action or not action[0].isdigit():
-                return ScreenType.HOME, (self.session.user_level,)  
+                return ScreenType.HOME, ()  
             
             idx = int(action[0])
             if idx not in self.sections_map:
@@ -357,7 +358,7 @@ class ClassSearchScreen(Screen):
     
     def prompt_action_admin(self):
         printToScreen("Admin manage sections prompt")
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
         
 
     def get_related_sections(self, course_id, term, session, year):
@@ -474,7 +475,7 @@ class ManageEnrollment(Screen):
         elif action[0] == "1":  # Swap Course
             return self.handle_swap_course()
         else:  # Return to Home
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
     
     def handle_drop_course(self):
         courses = self.get_enrolled_courses(self.session.user_netid, term='fall', session='first', year='2024')
@@ -482,7 +483,7 @@ class ManageEnrollment(Screen):
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -517,7 +518,7 @@ class ManageEnrollment(Screen):
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         try:
             selected_indices = [int(idx.strip()) - 1 for idx in user_input[0].split(',') if idx.strip().isdigit()]
@@ -596,22 +597,22 @@ class ViewTeachingClassesScreen(Screen):
 
     def prompt(self):
         action = getUserInput("Press ENTER to return to the Home Screen.")
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
 
     def prompt_for_filters(self):
         year = getUserInput("Enter year (e.g., 2024): ")
         if not year or not year[0].isdigit():
             printToScreen("Invalid year. Returning to Home Screen.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
         term = getUserInput("Enter term (e.g., spring, fall, summer): ")
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
         self.sections = self.get_matching_sections(year[0], term[0].lower(), None, None, self.session.user_name)
 
         if not self.sections:
             printToScreen("No classes found for the selected term and year.")
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
         self.display_courses(self.sections, instructor=False)
         self.prompt_for_course_selection()
@@ -620,7 +621,7 @@ class ViewTeachingClassesScreen(Screen):
         while True:
             course_input = getUserInput("Enter the index of a course to view or grade students, or press ENTER to return:")
             if not course_input or not course_input[0].isdigit():
-                return ScreenType.HOME, (self.session.user_level,)
+                return ScreenType.HOME, ()
 
             selected_index = int(course_input[0]) - 1
             grouped_courses = self.group_courses_by_course_id(self.sections)
@@ -631,7 +632,7 @@ class ViewTeachingClassesScreen(Screen):
 
             selected_course = list(grouped_courses.values())[selected_index]
             self.display_and_grade_students(selected_course)
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
 
     def display_and_grade_students(self, course_sections):
@@ -745,7 +746,7 @@ class PersonalInformationScreen(Screen):
         elif action[0] == "1":  # Update Address
             self.update_address()
         else:  # Return to Home
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
         
         return ScreenType.PERSONAL_INFORMATION, ()
 
@@ -1122,7 +1123,7 @@ class ShowMyProgressScreen(Screen):
         elif user_choice[0] == "3":  # GPA by Year and Term
             self.display_gpa_by_year_term()
         elif user_choice[0] == "4":
-            return ScreenType.HOME, (self.session.user_level,)  # Trigger navigation
+            return ScreenType.HOME, ()  # Trigger navigation
         
         return ScreenType.MY_ACADEMIC_PROGRESS, ()
     
@@ -1271,7 +1272,7 @@ class AdminScreen(Screen):
         elif user_choice[0] == "3":  # Manage Courses
             return ScreenType.MANAGE_COURSE, ()
         elif user_choice[0] == "4":
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
         return ScreenType.ADMIN, ()
 
 class ManageInstructorScreen(Screen):
@@ -1547,7 +1548,7 @@ class ManageCourseScreen(Screen):
         elif user_choice[0] == "3":  # Manage Sections (placeholder for now)
             printToScreen("Manage Sections is not implemented yet.")
         else:
-            return ScreenType.HOME, (self.session.user_level,)
+            return ScreenType.HOME, ()
 
     def manage_courses(self):
         course_id = getUserInput("Enter course ID:")
