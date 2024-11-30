@@ -37,7 +37,7 @@ class LoginScreen(Screen):
         self.session.user_level = userLevel
         self.session.user_name = userName  
         self.session.user_netid = username[0]
-        return ScreenType.HOME, (self.session.user_level,)
+        return ScreenType.HOME, ()
 
     def login(self, username, password):
         query = """
@@ -60,9 +60,9 @@ class LoginScreen(Screen):
 # User home screen. 
 # Shows different options based on the session's userLevel.
 class HomeScreen(Screen):
-    def __init__(self, session, user_level):
+    def __init__(self, session):
         super().__init__(session)
-        # TODO: create options based on the userLevel
+        user_level = session.user_level
         if user_level == 'student':
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
@@ -73,11 +73,13 @@ class HomeScreen(Screen):
                     "My Academic Prograss": (ScreenType.MY_ACADEMIC_PROGRESS,()),
                 }
         elif user_level == 'instructor':
+            # TODO: finish options
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
                     "View Teaching Classes": (ScreenType.TEACHING_CLASSES, ()),
                 }
         elif user_level == 'admin':
+            # TODO: finish options
             self.optionsToScreen = {
                     "Manage": (ScreenType.ADMIN, ()),
                     
