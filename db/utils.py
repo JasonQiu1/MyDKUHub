@@ -1,4 +1,9 @@
 def get_enrolled_courses(db_connection, student_id, term=None, session=None, year=None):
+    query = """
+    SELECT * 
+    FROM enrolled_courses_view
+    WHERE student_id = %s
+    """
     params = [student_id]
     if term:
         query += " AND term = %s"

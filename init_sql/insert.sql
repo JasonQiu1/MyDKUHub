@@ -879,6 +879,32 @@ insert into shopping (student_id, section_id) values
 ('yg202', 80), -- STATS 303 cannot enroll
 ('yg202', 81);
 
+insert into enrollment (student_id, section_id, grade) values 
+('jc923', 167, 'A'), -- CS 101. Fall 2023
+('jc923', 168, 'A'),
+('jc923', 192, 'A'), -- MATH 105
+('jc923', 193, 'A'),
+('jc923', 176, 'A'), -- CS 201
+('jc923', 177, 'A'), 
+('jc923', 208, 'A'), -- MATH 202
+('jc923', 209, 'A'), 
+('jc923', 119, 'A'), -- MATH 201. Spring 2024
+('jc923', 120, 'A'),
+('jc923', 129, 'A'), -- MATH 206
+('jc923', 130, 'A'),
+('jc923', 99, 'A'), -- CS 205
+('jc923', 100, 'A'),
+('jc923', 101, 'A'); -- CS 207
+
+
+insert into shopping (student_id, section_id) values 
+('jc923', 22), -- CS 309. Fall 2024
+('jc923', 23), 
+('jc923', 57), -- MATH 307
+('jc923', 24), -- CS 310
+('jc923', 80), -- STATS 303 cannot enroll
+('jc923', 81);
+
 insert into admin values ('admin');
 
 insert into login_info(id, password, type) values 
