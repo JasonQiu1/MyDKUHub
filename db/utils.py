@@ -16,7 +16,7 @@ def get_enrolled_courses(db_connection, student_id, term=None, session=None, yea
     JOIN section s ON e.section_id = s.id
     JOIN course c ON s.course_id = c.id AND s.type = c.type
     JOIN teaches t ON s.id = t.section_id
-    JOIN instructor i ON t.instructor_id = i.id
+    JOIN instructor_master i ON t.instructor_id = i.id
     WHERE e.student_id = %s
     """
     params = [student_id]
@@ -61,7 +61,7 @@ def get_matching_sections(db_connection, year, term, session, dept_name, instruc
     FROM section s
     JOIN course c ON s.course_id = c.id AND s.type = c.type
     JOIN teaches t ON s.id = t.section_id
-    JOIN instructor i ON t.instructor_id = i.id
+    JOIN instructor_master i ON t.instructor_id = i.id
     JOIN classroom cl ON s.building_name = cl.building_name AND s.room_name = cl.room_name
     JOIN section_time st ON s.id = st.section_id
     JOIN time_slot ts ON st.time_slot_id = ts.id
@@ -83,7 +83,7 @@ def get_matching_sections(db_connection, year, term, session, dept_name, instruc
             SELECT s_inner.id
             FROM section s_inner
             JOIN teaches t_inner ON s_inner.id = t_inner.section_id
-            JOIN instructor i_inner ON t_inner.instructor_id = i_inner.id
+            JOIN instructor_master i_inner ON t_inner.instructor_id = i_inner.id
             WHERE CONCAT(i_inner.first_name, ' ', i_inner.last_name) LIKE %s
         )
         """

@@ -299,6 +299,15 @@ insert into section (course_id, type, term, session, year, capacity, building_na
 ('STATS 401', 'SEM', 'Fall', 'first', 2024, 40, 'LIB', '1123'),
 ('STATS 402', 'SEM', 'Fall', 'second', 2024, 40, 'LIB', '2115');
 
+insert into instructor_master (id, first_name, last_name, dept, salary, isDuke, is_active)
+select id, first_name, last_name, dept, salary, isDuke, true
+from instructor;
+
+insert into instructor_master (id, first_name, last_name, dept, salary, isDuke, is_active)
+select id, first_name, last_name, dept, salary, isDuke, false
+from past_instructor;
+
+
 insert into teaches (instructor_id, section_id) value 
 ('bl291', 1),
 ('bl291', 2),

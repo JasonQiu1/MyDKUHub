@@ -872,3 +872,21 @@ END$$
 DELIMITER ;
 -- example usage
 -- CALL swap_course('yg202', '55,56','24');
+
+delimiter $$
+
+create trigger before_instructor_delete
+before delete on instructor
+for each row
+begin
+    insert into past_instructor (id, first_name, last_name, dept, salary, isDuke)
+    values (old.id, old.first_name, old.last_name, old.dept, old.salary, old.isDuke);
+
+    update instructor_master
+    set is_active = false
+    where id = old.id;
+    insert into instructor_deletion_log (instructor_id, reason)
+    values (old.id, 'Instructor moved to past_instructor');
+end$$
+
+delimiter ;

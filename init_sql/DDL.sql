@@ -1,4 +1,3 @@
-USE PROJ1;
 drop table if exists login_info;
 drop table if exists balance;
 drop table if exists enrollment;
@@ -22,7 +21,9 @@ drop table if exists building;
 drop table if exists hold;
 drop table if exists student;
 drop table if exists admin;
-
+drop table if exists instructor_deletion_log;
+drop table if exists past_instructor;
+drop table if exists instructor_master;
 
 create table dept (
     name varchar(50) primary key,
@@ -62,6 +63,32 @@ create table instructor (
         on delete set null
         on update cascade,
     check (salary > 0) 
+);
+create table instructor_master (
+    id varchar(10) primary key,
+    first_name varchar(100) not null,
+    last_name varchar(100) not null,
+    dept varchar(50),
+    salary int not null,
+    isDuke boolean,
+    is_active boolean not null
+);
+
+create table past_instructor (
+    id varchar(10) primary key,
+    first_name varchar(100) not null,
+    last_name varchar(100) not null,
+    dept varchar(50),
+    salary int not null,
+    isDuke boolean,
+    deleted_on datetime not null default current_timestamp
+);
+
+create table instructor_deletion_log (
+    instructor_id varchar(10),
+    deleted_on datetime not null default current_timestamp,
+    reason varchar(255),
+    primary key (instructor_id)
 );
 
 create table advised (
@@ -121,12 +148,14 @@ create table section (
         on update cascade 
 );
 
+
+
 create table teaches (
     instructor_id varchar(10),
     section_id int,
     primary key (instructor_id, section_id),
-    foreign key (instructor_id) references instructor(id)
-        on delete cascade
+    foreign key (instructor_id) references instructor_master(id)
+				on delete cascade
         on update cascade,
     foreign key (section_id) references section(id)
         on delete cascade
@@ -217,7 +246,6 @@ create table address (
     street_number varchar(20) not null,
     unit varchar(20),
     primary key (id),
-    UNIQUE (student_id, type),
     foreign key (student_id) references student(id)
         on delete cascade
         on update cascade
@@ -260,4 +288,3 @@ create table course_division (
         on delete cascade on update cascade
 		
 );
-
