@@ -45,8 +45,8 @@ insert into classroom (building_name, room_name) values
 
 insert into student (id, first_name, last_name, major, class) values 
 ('yg202', 'Yinuo', 'Guo', 'Art History', '2025'),
-('jc923', 'Jingfeng', 'Chen', 'Computer Science', '2025'),
-('jq48', 'Jason', 'Qiu', 'Computer Science', '2025');
+('jc923', 'Jingfeng', 'Chen', 'Computer Science', '2026'),
+('jq48', 'Jason', 'Qiu', 'Computer Science', '2026');
 
 insert into instructor (id, first_name, last_name, dept, salary, isDuke) values 
 ('mm940', 'Mustafa', 'Misir', 'Computer Science', 1, False),
@@ -904,6 +904,31 @@ insert into shopping (student_id, section_id) values
 ('jc923', 24), -- CS 310
 ('jc923', 80), -- STATS 303 cannot enroll
 ('jc923', 81);
+
+
+insert into enrollment (student_id, section_id, grade) values 
+('jq48', 237, 'A'), -- STATS 102. Fall 2023
+('jq48', 238, 'A'),
+('jq48', 194, 'A'), -- MATH 105
+('jq48', 195, 'A'),
+('jq48', 204, 'A'), -- MATH 201
+('jq48', 205, 'A'),
+('jq48', 210, 'A'), -- MATH 203
+('jq48', 211, 'A'),
+('jq48', 90, 'A'), -- CS 201. Spring 2023
+('jq48', 91, 'A'),
+('jq48', 123, 'A'), -- MATH 202
+('jq48', 124, 'A'),
+('jq48', 99, 'A'), -- CS 205
+('jq48', 100, 'A'),
+('jq48', 104, 'A'); -- CS 308
+
+insert into shopping (student_id, section_id) values 
+('jq48', 22), -- CS 309. Fall 2024
+('jq48', 23), 
+('jq48', 57), -- MATH 307
+('jq48', 24), -- CS 310
+('jq48', 18); -- CS 207
 
 insert into admin values ('admin');
 
