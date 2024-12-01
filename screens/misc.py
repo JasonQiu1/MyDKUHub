@@ -500,6 +500,11 @@ class ViewTeachingClassesScreen(Screen):
         return ScreenType.HOME, ()
 
     def prompt_for_filters(self):
+        if self.session.user_level == 'admin':
+            instructor_name = ' '.join(getUserInput("Enter instructor name (or press ENTER to skip):"))
+            
+        else:
+            instructor_name = self.session.user_name
         year = getUserInput("Enter year (e.g., 2024): ")
         if not year or not year[0].isdigit():
             printToScreen("Invalid year. Returning to Home Screen.")
@@ -508,7 +513,7 @@ class ViewTeachingClassesScreen(Screen):
         if not term or term[0].lower() not in ['spring', 'fall', 'summer']:
             printToScreen("Invalid term. Returning to Home Screen.")
             return ScreenType.HOME, ()
-        self.sections = get_matching_sections(self.session.db_connection, year[0], term[0].lower(), None, None, self.session.user_name)
+        self.sections = get_matching_sections(self.session.db_connection, year[0], term[0].lower(), None, None, instructor_name)
 
         if not self.sections:
             printToScreen("No classes found for the selected term and year.")

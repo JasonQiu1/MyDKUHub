@@ -1,6 +1,7 @@
 from screens.base import *
 from screens.ui import *
 from screens.types import *
+from screens.misc import *
 
 class AdminScreen(Screen):
     def __init__(self, session):
@@ -15,6 +16,7 @@ class AdminScreen(Screen):
             "Manage Departments",
             "Manage Students",
             "Manage Courses",
+            "Manage Grades",
             "Return to Home Screen"
         ]
         user_choice = promptOptions(options)
@@ -27,7 +29,9 @@ class AdminScreen(Screen):
             return ScreenType.MANAGE_STUDENT, ()
         elif user_choice[0] == "3": 
             return ScreenType.MANAGE_COURSE, ()
-        elif user_choice[0] == "4":
+        elif user_choice[0] == "4": 
+            return ScreenType.TEACHING_CLASSES, ()
+        elif user_choice[0] == "5":
             return ScreenType.HOME, ()
         return ScreenType.ADMIN, ()
 
