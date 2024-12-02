@@ -12,16 +12,15 @@ class ViewTeachingClassesScreen(Screen):
         self.sections = []
 
     def draw(self):
-        printToScreen(f"Teaching Classes for {self.session.user_name}:")
+        printToScreen(f"Teaching Classes for {self.session.user_name}")
         self.prompt_for_filters()
 
     def prompt(self):
-        action = getUserInput("Press ENTER to return to the Home Screen.")
-        return ScreenType.HOME, ()
+        return self.prompt_for_course_selection()
 
     def prompt_for_filters(self):
         if self.session.user_level == 'admin':
-            instructor_name = ' '.join(getUserInput("Enter instructor name (or press ENTER to skip):"))
+            instructor_name = ' '.join(getUserInput("Enter instructor name (or press ENTER to skip)"))
             
         else:
             instructor_name = self.session.user_name
@@ -40,11 +39,10 @@ class ViewTeachingClassesScreen(Screen):
             return ScreenType.HOME, ()
 
         display_courses(self.sections, instructor=False)
-        self.prompt_for_course_selection()
 
     def prompt_for_course_selection(self):
         while True:
-            course_input = getUserInput("Enter the index of a course to view or grade students, or press ENTER to return:")
+            course_input = getUserInput("Enter the index of a course to view or grade students, or press ENTER to return")
             if not course_input or not course_input[0].isdigit():
                 return ScreenType.HOME, ()
 
@@ -69,13 +67,13 @@ class ViewTeachingClassesScreen(Screen):
                 return
             merged_students = self.merge_students_by_id(students)
 
-            printToScreen(f"Students Enrolled in {course_sections[0]['course_name']}:")
+            printToScreen(f"Students Enrolled in {course_sections[0]['course_name']}")
             for idx, student in enumerate(merged_students):
                 printToScreen(
                     f"{idx + 1}. {student['first_name']} {student['last_name']} - {student['student_id']} - Grade: {student.get('grade', 'N/A')}"
                 )
 
-            student_input = getUserInput("Enter the index of a student to change their grade, or press ENTER to return:")
+            student_input = getUserInput("Enter the index of a student to change their grade, or press ENTER to return")
             if not student_input or not student_input[0].isdigit():
                 return
 
@@ -105,7 +103,7 @@ class ViewTeachingClassesScreen(Screen):
         return list(merged.values())
 
     def prompt_for_grade_change(self, section_ids, student):
-        new_grade = getUserInput(f"Enter the new grade for {student['first_name']} {student['last_name']} (or press ENTER to cancel):")
+        new_grade = getUserInput(f"Enter the new grade for {student['first_name']} {student['last_name']} (or press ENTER to cancel)")
         if not new_grade:
             printToScreen("Grade change canceled.")
             return
@@ -142,14 +140,9 @@ class ViewTeachingClassesScreen(Screen):
         return self.session.db_connection.execute_query(query, tuple(section_ids))
     
 class AdviseesScreen(Screen):
-    def draw():
-        printToScreen("Your advisees:")
+    def draw(self):
+        printToScreen("Your advisees")
 
 class InstructorInformationScreen(Screen):
-    def draw():
-        printToScreen("Your personal information:")
-
-class RosterScreen(Screen):
-    def draw():
-        printToScreen("Class roster:")
-
+    def draw(self):
+        printToScreen("Your personal information")

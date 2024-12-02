@@ -50,7 +50,7 @@ class LoginScreen(Screen):
                END AS user_name
         FROM login_info li
         LEFT JOIN student s ON li.id = s.id
-        LEFT JOIN instructor_master i ON li.id = i.id
+        LEFT JOIN instructor i ON li.id = i.id
         WHERE li.id = %s AND li.password = %s
         """
         result = self.session.db_connection.execute_query(query, (username, password))
@@ -74,10 +74,11 @@ class HomeScreen(Screen):
                     "My Academic Prograss": (ScreenType.MY_ACADEMIC_PROGRESS,()),
                 }
         elif user_level == 'instructor':
-            # TODO: finish options
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
                     "View Teaching Classes": (ScreenType.TEACHING_CLASSES, ()),
+                    "View Advisees": (ScreenType.ADVISEES, ()),
+                    "View Personal Information": (ScreenType.INSTRUCTOR_INFORMATION, ()),
                 }
         elif user_level == 'admin':
             # TODO: finish options

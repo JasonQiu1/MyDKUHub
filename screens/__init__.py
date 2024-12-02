@@ -29,7 +29,6 @@ screenTypeToScreenClass = {
     ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
     ScreenType.ADVISEES: AdviseesScreen,
     ScreenType.INSTRUCTOR_INFORMATION: InstructorInformationScreen,
-    ScreenType.ROSTER: RosterScreen,
     
     # Admin
     ScreenType.ADMIN: AdminScreen,
