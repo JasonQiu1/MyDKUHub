@@ -25,12 +25,12 @@ python main.py
 View the SRS and database schema and use case diagrams in the `doc` folder.
 
 ## Creating new screens
-The project interface is designed to be modular. To implement new screens, add a ScreenType for it in `screen_types.py`, inherit `Screen` and implement it in `screens.py`, and add a mapping from the screen type to class in `main.py`. All other screen classes and the application code like the `Session` class do not need to be modified. `Session` is closed to modification when extending the program with new screens. 
+The project interface is designed to be modular. To implement new screens, add a ScreenType for it in `screens/types.py`, inherit `Screen` and implement it in the screens package/folder, and add a mapping from the screen type to class in `screens/__init__.py`. If you may a new file, make sure it is imported in `screens/__init__.py`. All other screen classes and the application code like the `Session` class do not need to be modified. `Session` is closed to modification when extending the program with new screens. 
 
 ## Creating new views or user interfaces
-`printToScreen` and `getUserInput` in `screen_base.py` can be modified to change the view of the application. Although it currently uses the terminal as the UI, it can be easily modified to print to an actual application window by changing those functions as well as `Session` without modifying any screens. This makes all the screens closed to modified when extending the program with new views.
+`printToScreen` and `getUserInput` in `screens/ui.py` can be modified to change the view of the application. Although it currently uses the terminal as the UI, it can be easily modified to print to an actual application window by changing those functions as well as `Session` without modifying any screens. This makes all the screens closed to modified when extending the program with new views.
 
 # Contributing
-First, read the documentation around `Session` in `main.py` and `Screen` in `screen_base.py`. 
+First, read the documentation around `Session` in `main.py` and `Screen` in `screens/base.py`. 
 
-When printing or getting user input, use the `printToScreen` and `getUserInput` utility functions to preserve abstraction between the model and view.
+When printing or getting user input, use the `printToScreen` and `getUserInput` utility functions in `screens/ui.py` to preserve abstraction between the model and view.
