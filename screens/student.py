@@ -5,6 +5,7 @@ import plotext as plt
 from screens.base import *
 from screens.ui import *
 from screens.types import *
+from screens.types import *
 
 from db.utils import *
 
