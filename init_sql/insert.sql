@@ -821,8 +821,13 @@ insert into credit_limit(student_id, year, term, session, credit_limit) values
 
 
 insert into course_division (course_id, division)
-select distinct(id), 'Natural Science'
-from course;
+select distinct c.id,
+       case
+           when c.dept_name = 'Computer Science' THEN 'Art and Humanity'
+           when c.dept_name = 'Statistics' THEN 'Social Science'
+           else 'Natural Science'
+       end as division
+from course c;
 
 insert into address (student_id, type, country, province, city, zip_code, street, street_number, unit)
 select 
