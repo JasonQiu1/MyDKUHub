@@ -1,5 +1,6 @@
 drop table if exists login_info;
 drop table if exists balance;
+drop table if exists major;
 drop table if exists enrollment;
 drop table if exists shopping;
 drop table if exists phone_number;
@@ -44,6 +45,11 @@ create table classroom (
         on update cascade
 );
 
+create table major(
+	name varchar(100) primary key
+);
+
+
 create table student (
     id varchar(10) primary key,
     first_name varchar(100) not null,
@@ -51,6 +57,7 @@ create table student (
     major varchar(100),
     class varchar(4)
 );
+
 
 create table instructor (
     id varchar(10) primary key,

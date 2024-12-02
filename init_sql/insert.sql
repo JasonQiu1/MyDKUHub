@@ -1,3 +1,8 @@
+insert into major (name) values 
+('Not Declared'),
+('Computer Science'),
+('Art History');
+
 insert into dept (name, budget) values
 ('Computer Science', 500000),
 ('Math', 300000),

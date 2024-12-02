@@ -366,13 +366,174 @@ class ManageDepartmentScreen(Screen):
         except Exception as e:
             printToScreen(f"Failed to delete department: {e}")
 
-
 class ManageStudentScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+
     def draw(self):
         printToScreen("Student Management:\n")
 
     def prompt(self):
-        return ScreenType.ADMIN, ()
+        options = [
+            "View Students",
+            "Add New Student",
+            "Modify Student",
+            "Delete Student",
+            "Return to Admin Menu"
+        ]
+        user_choice = promptOptions(options)
+
+        if user_choice[0] == "0": 
+            self.view_students()
+        elif user_choice[0] == "1": 
+            self.add_student()
+        elif user_choice[0] == "2":  
+            self.modify_student()
+        elif user_choice[0] == "3":  
+            self.delete_student()
+        elif user_choice[0] == "4":  
+            return ScreenType.ADMIN, ()
+
+        return ScreenType.MANAGE_STUDENT, ()
+
+    def view_students(self):
+        printToScreen("View Students")
+
+        student_id = getUserInput("Enter student ID (or press ENTER to skip):")
+        
+        query = """
+        SELECT id, first_name, last_name, major, class
+        FROM student
+        WHERE id LIKE %s
+        """
+        params = (
+            f"%{student_id[0]}%" if student_id else "%",
+        )
+
+        students = self.session.db_connection.execute_query(query, params)
+
+        if not students:
+            printToScreen("No students found matching the criteria.")
+            return
+
+        printToScreen("Matching Students:")
+        for student in students:
+            printToScreen(
+                f"ID: {student['id']}, Name: {student['first_name']} {student['last_name']}, "
+                f"Major: {student['major']}, Class: {student['class']}"
+            )
+
+    def add_student(self):
+        printToScreen("Add New Student")
+
+        student_id = getUserInput("Enter student ID:")
+        first_name = getUserInput("Enter first name:")
+        last_name = getUserInput("Enter last name:")
+        year = getUserInput("Enter academic year:")
+        major = self.select_major() or 'Not Declared'
+
+        insert_query = """
+        INSERT INTO student (id, first_name, last_name, class, major)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        try:
+            self.session.db_connection.execute_update(insert_query, (
+                student_id[0], first_name[0], last_name[0],
+                year[0] if year else None,
+                major
+            ))
+            printToScreen("Student added successfully.")
+        except Exception as e:
+            printToScreen(f"Failed to add student: {e}")
+
+    def modify_student(self):
+        printToScreen("Modify Student")
+        student_id = getUserInput("Enter student ID to modify:")
+        if not student_id or not student_id[0]:
+            printToScreen("Student ID is required.")
+            return
+
+        query = """
+        SELECT id, first_name, last_name, class, major
+        FROM student
+        WHERE id = %s
+        """
+        student = self.session.db_connection.execute_query(query, (student_id[0],))
+        if not student:
+            printToScreen("Student not found.")
+            return
+
+        student = student[0]  # Select the first (and only) result
+        new_first_name = getUserInput("Enter new first name (or press ENTER to keep current):")
+        new_last_name = getUserInput("Enter new last name (or press ENTER to keep current):")
+        new_year = getUserInput("Enter new academic year (or press ENTER to keep current):")
+        new_major = self.select_major() or student['major']
+
+        update_query = """
+        UPDATE student
+        SET first_name = COALESCE(NULLIF(%s, ''), first_name),
+            last_name = COALESCE(NULLIF(%s, ''), last_name),
+            class = COALESCE(NULLIF(%s, ''), class),
+            major = COALESCE(NULLIF(%s, ''), major)
+        WHERE id = %s
+        """
+        try:
+            self.session.db_connection.execute_update(update_query, (
+                new_first_name[0] if new_first_name else None,
+                new_last_name[0] if new_last_name else None,
+                new_year[0] if new_year else None,
+                new_major,
+                student_id[0]
+            ))
+            printToScreen("Student information updated successfully.")
+        except Exception as e:
+            printToScreen(f"Failed to update student: {e}")
+
+    def delete_student(self):
+        printToScreen("Delete Student")
+
+        student_id = getUserInput("Enter student ID to delete:")
+        if not student_id or not student_id[0]:
+            printToScreen("Student ID is required.")
+            return
+
+        confirm = getUserInput(f"Are you sure you want to delete student ID {student_id[0]}? (yes/no):")
+        if not confirm or confirm[0].lower() != "yes":
+            printToScreen("Student deletion canceled.")
+            return
+
+        delete_query = """
+        DELETE FROM student WHERE id = %s
+        """
+        try:
+            self.session.db_connection.execute_update(delete_query, (student_id[0],))
+            printToScreen("Student deleted successfully.")
+        except Exception as e:
+            printToScreen(f"Failed to delete student: {e}")
+
+    def select_major(self):
+        query = "SELECT name FROM major"
+        majors = self.session.db_connection.execute_query(query)
+        if not majors:
+            printToScreen("No majors available. Please add majors first.")
+            return None
+
+        printToScreen("Available Majors:")
+        for idx, major in enumerate(majors):
+            printToScreen(f"{idx + 1}. {major['name']}")
+
+        major_index = getUserInput("Select the major by number (or press ENTER to skip):")
+        if not major_index or not major_index[0].isdigit():
+            return None
+
+        major_index = int(major_index[0]) - 1
+        if major_index < 0 or major_index >= len(majors):
+            printToScreen("Invalid selection.")
+            return None
+
+        return majors[major_index]['name']
+
+
 
 class ManageCourseScreen(Screen):
     def __init__(self, session):
@@ -740,8 +901,6 @@ class ManageCourseScreen(Screen):
         if selected_index < 0 or selected_index >= len(sections):
             printToScreen("Invalid selection.")
             return
-
-    
 
 
     def delete_section(self):
