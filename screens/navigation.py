@@ -84,6 +84,7 @@ class HomeScreen(Screen):
             # TODO: finish options
             self.optionsToScreen = {
                     "Manage": (ScreenType.ADMIN, ()),
+                    "Statistics": (ScreenType.STATISTICS, ()),  
                     
                 }
         

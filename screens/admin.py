@@ -1014,3 +1014,164 @@ class ManageCourseScreen(Screen):
 
         return rooms[room_index]['room_name']
 
+
+class StatisticsScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+
+    def draw(self):
+        printToScreen("Statistics Dashboard:\n")
+
+    def prompt(self):
+        options = [
+            "Student Statistics",
+            "Instructor Statistics",
+            "Course Statistics",
+            "Return to Admin Menu"
+        ]
+        user_choice = promptOptions(options)
+
+        if user_choice[0] == "0":  # Student Statistics
+            return ScreenType.STUDENT_STATS, ()
+        elif user_choice[0] == "1":  # Instructor Statistics
+            return ScreenType.INSTRUCTOR_STATS, ()
+        elif user_choice[0] == "2":  # Course Statistics
+            return ScreenType.COURSE_STATS, ()
+        elif user_choice[0] == "3":  # Return to Admin Menu
+            return ScreenType.ADMIN, ()
+
+        return ScreenType.STATISTICS, ()
+
+
+class StudentStatisticsScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+
+    def draw(self):
+        printToScreen("Student Statistics:\n")
+
+    def prompt(self):
+        options = [
+            "View Number of Students by Class",
+            "View GPA Distribution",
+            "Return to Statistics Menu"
+        ]
+        user_choice = promptOptions(options)
+
+        if user_choice[0] == "0":  # Students by Class
+            self.view_students_by_class()
+        elif user_choice[0] == "1":  # GPA Distribution
+            self.view_gpa_distribution()
+        elif user_choice[0] == "2":  # Return to Statistics Menu
+            return ScreenType.STATISTICS, ()
+
+        return ScreenType.STUDENT_STATS, ()
+
+    def view_students_by_class(self):
+        query = """
+        SELECT class, COUNT(*) as student_count
+        FROM student
+        GROUP BY class
+        ORDER BY class
+        """
+        results = self.session.db_connection.execute_query(query)
+
+        printToScreen("Number of Students by Class:")
+        for row in results:
+            printToScreen(f"Class: {row['class']}, Students: {row['student_count']}")
+
+    def view_gpa_distribution(self):
+        query = """
+        SELECT grade, COUNT(*) as count
+        FROM enrollment
+        GROUP BY grade
+        ORDER BY FIELD(grade, 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F', 'NC', 'CR')
+        """
+        results = self.session.db_connection.execute_query(query)
+
+        printToScreen("GPA Distribution:")
+        for row in results:
+            printToScreen(f"Grade: {row['grade']}, Count: {row['count']}")
+
+
+class InstructorStatisticsScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+
+    def draw(self):
+        printToScreen("Instructor Statistics:\n")
+
+    def prompt(self):
+        options = [
+            "View Average Salary by Department",
+            "View Instructor Count by Department",
+            "Return to Statistics Menu"
+        ]
+        user_choice = promptOptions(options)
+
+        if user_choice[0] == "0":  # Average Salary by Department
+            self.view_avg_salary_by_dept()
+        elif user_choice[0] == "1":  # Instructor Count by Department
+            self.view_instructor_count_by_dept()
+        elif user_choice[0] == "2":  # Return to Statistics Menu
+            return ScreenType.STATISTICS, ()
+
+        return ScreenType.INSTRUCTOR_STATS, ()
+
+    def view_avg_salary_by_dept(self):
+        query = """
+        SELECT dept, AVG(salary) as avg_salary
+        FROM instructor
+        GROUP BY dept
+        """
+        results = self.session.db_connection.execute_query(query)
+
+        printToScreen("Average Salary by Department:")
+        for row in results:
+            printToScreen(f"Department: {row['dept']}, Average Salary: ${row['avg_salary']:.2f}")
+
+    def view_instructor_count_by_dept(self):
+        query = """
+        SELECT dept, COUNT(*) as instructor_count
+        FROM instructor
+        GROUP BY dept
+        """
+        results = self.session.db_connection.execute_query(query)
+
+        printToScreen("Instructor Count by Department:")
+        for row in results:
+            printToScreen(f"Department: {row['dept']}, Count: {row['instructor_count']}")
+
+
+class CourseStatisticsScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+
+    def draw(self):
+        printToScreen("Course Statistics:\n")
+
+    def prompt(self):
+        options = [
+            "View Courses by Division",
+            "Return to Statistics Menu"
+        ]
+        user_choice = promptOptions(options)
+
+        if user_choice[0] == "0":  # Courses by Division
+            self.view_courses_by_division()
+        elif user_choice[0] == "1":  # Return to Statistics Menu
+            return ScreenType.STATISTICS, ()
+
+        return ScreenType.COURSE_STATS, ()
+
+    def view_courses_by_division(self):
+        query = """
+        SELECT cd.division, COUNT(*) as course_count
+        FROM course_division cd
+        GROUP BY cd.division
+        """
+        results = self.session.db_connection.execute_query(query)
+
+        printToScreen("Courses by Division:")
+        for row in results:
+            printToScreen(f"Division: {row['division']}, Courses: {row['course_count']}")

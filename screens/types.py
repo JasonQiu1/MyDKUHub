@@ -21,4 +21,9 @@ class ScreenType(Enum):
     MANAGE_DEPARTMENT=auto(),
     MANAGE_STUDENT=auto(),
     MANAGE_COURSE=auto(),
+    STATISTICS=auto(),
+    STUDENT_STATS=auto(),
+    INSTRUCTOR_STATS=auto(),
+    COURSE_STATS=auto(),
     EXIT = auto()
+

@@ -38,4 +38,8 @@ screenTypeToScreenClass = {
     ScreenType.MANAGE_DEPARTMENT: ManageDepartmentScreen,
     ScreenType.MANAGE_STUDENT: ManageStudentScreen,
     ScreenType.MANAGE_COURSE: ManageCourseScreen,
+    ScreenType.STATISTICS: StatisticsScreen,
+    ScreenType.STUDENT_STATS: StudentStatisticsScreen,
+    ScreenType.INSTRUCTOR_STATS: InstructorStatisticsScreen,
+    ScreenType.COURSE_STATS: CourseStatisticsScreen,
 }
