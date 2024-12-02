@@ -4,8 +4,9 @@ from screens.base import *
 from screens.types import *
 from screens.navigation import *
 
-from screens.admin import *
+from screens.student import *
 from screens.instructor import *
+from screens.admin import *
 from screens.misc import *
 
 entryScreenType = ScreenType.LOGIN
@@ -24,6 +25,7 @@ screenTypeToScreenClass = {
     # Student
     ScreenType.PERSONAL_INFORMATION: PersonalInformationScreen,
     ScreenType.MY_ACADEMIC_PROGRESS: ShowMyProgressScreen,
+    ScreenType.MANAGE_ENROLLMENT: ManageEnrollment,
 
     # Instructor
     ScreenType.TEACHING_CLASSES: ViewTeachingClassesScreen,
@@ -33,7 +35,6 @@ screenTypeToScreenClass = {
     # Admin
     ScreenType.ADMIN: AdminScreen,
     ScreenType.MANAGE_INSTRUCTOR: ManageInstructorScreen,
-    ScreenType.MANAGE_ENROLLMENT: ManageEnrollment,
     ScreenType.MANAGE_DEPARTMENT: ManageDepartmentScreen,
     ScreenType.MANAGE_STUDENT: ManageStudentScreen,
     ScreenType.MANAGE_COURSE: ManageCourseScreen,
