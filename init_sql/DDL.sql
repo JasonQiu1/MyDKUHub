@@ -54,8 +54,9 @@ create table student (
     id varchar(10) primary key,
     first_name varchar(100) not null,
     last_name varchar(100) not null,
-    major varchar(100),
-    class varchar(4)
+    major varchar(100) default 'Not Declared',
+    class varchar(4),
+	foreign key (major) references major(name)
 );
 
 
