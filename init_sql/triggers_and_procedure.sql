@@ -1,3 +1,7 @@
+DROP PROCEDURE IF EXISTS AddAdvisingHoldsToAllStudents;
+CREATE PROCEDURE AddAdvisingHoldsToAllStudents()
+	INSERT INTO hold SELECT id, 'advising' FROM student 
+	WHERE id NOT IN (SELECT student_id FROM hold WHERE type = 'advising');
 
 DROP trigger IF EXISTS check_login_info_before_insert;
 delimiter $$
