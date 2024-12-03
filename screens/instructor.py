@@ -162,6 +162,8 @@ class AdviseesScreen(Screen):
         if self.hasAdvisingHold(netid):
             try:
                 self.releaseAdvisingHold(netid)
+
+                printToScreen("Successfully released advising hold from " + netid)
             except Exception as e:
                 printToScreen("An error occurred while releasing the hold: ")
                 printToScreen(e)
@@ -169,13 +171,11 @@ class AdviseesScreen(Screen):
         else:
             printToScreen("Invalid netid or this student does not have an advising hold. Please verify and try again.")
 
-        printToScreen("Successfully released advising hold from " + netid)
-
         return False, ()
 
     def releaseAdvisingHold(self, netid):
         query = "DELETE FROM hold WHERE student_id = %s and type='advising'" 
-        return self.session.db_connection.execute_query(query, (netid,))
+        return self.session.db_connection.execute_update(query, (netid,))
     
     def hasAdvisingHold(self, netid):
         for advisee in self.advisees:
