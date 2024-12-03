@@ -282,7 +282,7 @@ create table login_info (
 
 create table hold (
 		student_id varchar(50),
-		type enum('advising', 'register') not null,
+        type enum('advising', 'registrar') not null,
 		primary key (student_id, type),
 		foreign key (student_id) references student(id)
         on delete cascade
