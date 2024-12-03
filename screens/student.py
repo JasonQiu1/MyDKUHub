@@ -164,16 +164,32 @@ class PersonalInformationScreen(Screen):
         )
 
     def prompt(self):
-        action = promptOptions(["Update Phone", "Update Address", "Return to Home"])
+        printToScreen("Press ENTER to return to home.")
+        options = ["Update Phone", "Update Address"]
+        hasRegistrarHold = self.hasRegistrarHold()
+
+        if hasRegistrarHold:
+            options.append("Verify that all information is updated and correct to release registrar hold")
+
+        action = promptOptions(options)
+        if not action:
+            return ScreenType.HOME, ()
         
         if action[0] == "0":  # Update Phone
             self.update_phone()
         elif action[0] == "1":  # Update Address
             self.update_address()
-        else:  # Return to Home
-            return ScreenType.HOME, ()
+        elif action[0] == "2" and hasRegistrarHold:
+            self.releaseRegistrarHold()
+            printToScreen("Successfully released registrar hold!")
         
         return ScreenType.PERSONAL_INFORMATION, ()
+
+    def releaseRegistrarHold(self):
+        return self.session.db_connection.execute_update("DELETE FROM hold WHERE type = 'registrar' AND student_id = %s", (self.session.user_netid,))
+
+    def hasRegistrarHold(self):
+        return self.session.db_connection.execute_query("SELECT TRUE FROM hold WHERE type = 'registrar' AND student_id = %s", (self.session.user_netid,))
 
     def get_personal_information(self, user_id):
         query_student = """

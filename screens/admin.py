@@ -379,6 +379,8 @@ class ManageStudentScreen(Screen):
             "Add New Student",
             "Modify Student",
             "Delete Student",
+            "Add Advising Holds to All Students",
+            "Add Registrar Holds to All Students",
             "Return to Admin Menu"
         ]
         user_choice = promptOptions(options)
@@ -392,6 +394,12 @@ class ManageStudentScreen(Screen):
         elif user_choice[0] == "3":  
             self.delete_student()
         elif user_choice[0] == "4":  
+            self.session.db_connection.execute_procedure("AddAdvisingHoldsToAllStudents", ())
+            printToScreen("Successfully added advising holds to all students.")
+        elif user_choice[0] == "5":  
+            self.session.db_connection.execute_procedure("AddRegistrarHoldsToAllStudents", ())
+            printToScreen("Successfully added registrar holds to all students.")
+        elif user_choice[0] == "6":  
             return ScreenType.ADMIN, ()
 
         return ScreenType.MANAGE_STUDENT, ()
