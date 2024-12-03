@@ -394,10 +394,10 @@ class ManageStudentScreen(Screen):
         elif user_choice[0] == "3":  
             self.delete_student()
         elif user_choice[0] == "4":  
-            self.session.db_connection.execute_query("CALL AddAdvisingHoldsToAllStudents()")
+            self.session.db_connection.execute_procedure("AddAdvisingHoldsToAllStudents", ())
             printToScreen("Successfully added advising holds to all students.")
         elif user_choice[0] == "5":  
-            self.session.db_connection.execute_query("CALL AddRegistrarHoldsToAllStudents()")
+            self.session.db_connection.execute_procedure("AddRegistrarHoldsToAllStudents", ())
             printToScreen("Successfully added registrar holds to all students.")
         elif user_choice[0] == "6":  
             return ScreenType.ADMIN, ()
