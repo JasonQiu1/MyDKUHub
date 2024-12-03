@@ -1,6 +1,5 @@
 drop table if exists login_info;
 drop table if exists balance;
-drop table if exists major;
 drop table if exists enrollment;
 drop table if exists shopping;
 drop table if exists phone_number;
@@ -21,6 +20,7 @@ drop table if exists classroom;
 drop table if exists building;
 drop table if exists hold;
 drop table if exists student;
+drop table if exists major;
 drop table if exists admin;
 drop table if exists instructor_deletion_log;
 drop table if exists past_instructor;
