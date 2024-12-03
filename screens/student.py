@@ -402,6 +402,11 @@ class PersonalInformationScreen(Screen):
         street = getUserInput("Enter street:")
         street_number = getUserInput("Enter street number:")
         unit = getUserInput("Enter unit number (optional):")
+        
+        country = " ".join(country) if country else None
+        province = " ".join(province) if province else None
+        city = " ".join(city) if city else None
+        street = " ".join(street) if street else None
 
         query = """
         INSERT INTO address (student_id, type, country, province, city, zip_code, street, street_number, unit)
@@ -412,8 +417,8 @@ class PersonalInformationScreen(Screen):
                 query,
                 (
                     self.session.user_netid, address_type[0].lower(),
-                    country[0], province[0], city[0], zip_code[0] if zip_code else None,
-                    street[0], street_number[0], unit[0] if unit else None
+                    country, province, city, zip_code[0] if zip_code else None,
+                    street, street_number[0], unit[0] if unit else None
                 )
             )
             printToScreen(f"{address_type[0].capitalize()} address added successfully.")
@@ -458,6 +463,11 @@ class PersonalInformationScreen(Screen):
         street = getUserInput("Enter street:")
         street_number = getUserInput("Enter street number:")
         unit = getUserInput("Enter unit number (optional):")
+        
+        country = " ".join(country) if country else None
+        province = " ".join(province) if province else None
+        city = " ".join(city) if city else None
+        street = " ".join(street) if street else None
 
         query = """
         UPDATE address
@@ -468,13 +478,14 @@ class PersonalInformationScreen(Screen):
             self.session.db_connection.execute_update(
                 query,
                 (
-                    country[0], province[0], city[0], zip_code[0] if zip_code else None,
-                    street[0], street_number[0], unit[0] if unit else None, selected_address_id
+                    country, province, city, zip_code[0] if zip_code else None,
+                    street, street_number[0], unit[0] if unit else None, selected_address_id
                 )
             )
             printToScreen("Address updated successfully.")
         except Exception as e:
             printToScreen(f"Failed to update address: {e}")
+
 
     def delete_address(self):
         query = """
