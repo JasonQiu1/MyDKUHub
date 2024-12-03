@@ -312,6 +312,7 @@ insert into instructor_master (id, first_name, last_name, dept, salary, isDuke, 
 select id, first_name, last_name, dept, salary, isDuke, false
 from past_instructor;
 
+INSERT INTO hold values ("jq48", "advising");
 
 insert into teaches (instructor_id, section_id) value 
 ('bl291', 1),
