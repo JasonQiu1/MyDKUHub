@@ -25,16 +25,15 @@ class LoginScreen(Screen):
         username = getUserInput("Username (leave empty to exit)")
         if not username:
             return ScreenType.EXIT, ()
-
-        password = getUserInput("Password")
-        if not password:
-            return ScreenType.LOGIN, ()
-
+        password = "1"
+        if self.session.user_level != 'admin':
+            password = getUserInput("Password")
+            if not password:
+                return ScreenType.LOGIN, ()   
         userLevel, userName = self.login(username[0], password[0])
         if userLevel is None:
             printToScreen("Unsuccessful login, please try again.")
             return ScreenType.LOGIN, ()
-
         self.session.user_level = userLevel
         self.session.user_name = userName  
         self.session.user_netid = username[0]
@@ -51,9 +50,14 @@ class LoginScreen(Screen):
         FROM login_info li
         LEFT JOIN student s ON li.id = s.id
         LEFT JOIN instructor i ON li.id = i.id
-        WHERE li.id = %s AND li.password = %s
+        WHERE li.id = %s 
         """
-        result = self.session.db_connection.execute_query(query, (username, password))
+        print(password)
+        if self.session.user_level != 'admin':
+            query += "AND li.password = %s"
+            result = self.session.db_connection.execute_query(query, (username, password))
+        else:
+            result = self.session.db_connection.execute_query(query, (username,))
         if result:
             return result[0]['type'], result[0]['user_name']
         return None, None
@@ -85,6 +89,7 @@ class HomeScreen(Screen):
             self.optionsToScreen = {
                     "Manage": (ScreenType.ADMIN, ()),
                     "Statistics": (ScreenType.STATISTICS, ()),  
+                    "Sudo": (ScreenType.LOGIN, ()),
                     
                 }
         
