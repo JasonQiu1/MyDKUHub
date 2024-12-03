@@ -5,8 +5,8 @@ def getUserInput(prompt):
     return input(f"{prompt}: ").strip().split()
 
 # Print the text to the screen.
-def printToScreen(text):
-    print(text)
+def printToScreen(*args):
+    print(*args)
 
 # Prompt with numbered options, return the option that is selected.
 # If not a number (or not in range), then return the user input.
