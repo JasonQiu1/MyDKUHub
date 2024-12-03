@@ -19,6 +19,7 @@ class Screen:
     # Perform any actions for that input.
     # Returns the next Screen that should occur based off that input
     #   AND with a tuple containing any arguments that should go into initializing that screen.
+    # Return False, () to remain on the same screen without reinitialization.
     def prompt(self):
         input("Default prompt, redirecting to LOGIN by default.")
 
