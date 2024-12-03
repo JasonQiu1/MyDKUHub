@@ -206,4 +206,19 @@ class AdviseesScreen(Screen):
 
 class InstructorInformationScreen(Screen):
     def draw(self):
-        printToScreen("Your personal information")
+        printToScreen("Your personal information.")
+        self.printInformation()
+
+    def prompt(self):
+        getUserInput("Press ENTER to return to home screen")
+        return ScreenType.HOME, ()
+
+    def printInformation(self):
+        query = "SELECT * FROM instructor WHERE id = %s"
+        info = self.session.db_connection.execute_query(query, (self.session.user_netid,))[0]
+        printToScreen("First Name:", info['first_name'])
+        printToScreen("Last Name:", info['last_name'])
+        printToScreen("NetID:", info['id'])
+        printToScreen("Department:", info['dept'])
+        printToScreen("Salary:", info['salary'])
+        printToScreen("Visiting from Duke?", "No" if info['isDuke'] == 0 else "Yes")
