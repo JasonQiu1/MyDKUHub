@@ -175,7 +175,7 @@ class AdviseesScreen(Screen):
 
     def releaseAdvisingHold(self, netid):
         query = "DELETE FROM hold WHERE student_id = %s and type='advising'" 
-        return self.session.db_connection.execute_query(query, (netid,))
+        return self.session.db_connection.execute_update(query, (netid,))
     
     def hasAdvisingHold(self, netid):
         for advisee in self.advisees:
