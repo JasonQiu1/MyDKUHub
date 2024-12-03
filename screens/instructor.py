@@ -162,14 +162,14 @@ class AdviseesScreen(Screen):
         if self.hasAdvisingHold(netid):
             try:
                 self.releaseAdvisingHold(netid)
+
+                printToScreen("Successfully released advising hold from " + netid)
             except Exception as e:
                 printToScreen("An error occurred while releasing the hold: ")
                 printToScreen(e)
                 printToScreen("Please try again.")
         else:
             printToScreen("Invalid netid or this student does not have an advising hold. Please verify and try again.")
-
-        printToScreen("Successfully released advising hold from " + netid)
 
         return False, ()
 
