@@ -139,9 +139,70 @@ class ViewTeachingClassesScreen(Screen):
         """
         return self.session.db_connection.execute_query(query, tuple(section_ids))
     
+# Shows advisees and can release holds on them.
 class AdviseesScreen(Screen):
+    def __init__(self, session):
+        super().__init__(session)
+        self.advisees = []
+
     def draw(self):
+        self.advisees = self.getAdvisees()
         printToScreen("Your advisees")
+        printToScreen("([A] indicates that the advisee as an active advising hold)")
+        self.printAdvisees()
+
+    def prompt(self):
+        userInput = getUserInput("Input netid of student to release advising hold on (leave empty to go back)")
+
+        if not userInput:
+            return ScreenType.HOME, ()
+
+        netid = userInput[0]
+        
+        if self.hasAdvisingHold(netid):
+            try:
+                self.releaseAdvisingHold(netid)
+            except Exception as e:
+                printToScreen("An error occurred while releasing the hold: ")
+                printToScreen(e)
+                printToScreen("Please try again.")
+        else:
+            printToScreen("Invalid netid or this student does not have an advising hold. Please verify and try again.")
+
+        printToScreen("Successfully released advising hold from " + netid)
+
+        return False, ()
+
+    def releaseAdvisingHold(self, netid):
+        query = "DELETE FROM hold WHERE student_id = %s and type='advising'" 
+        return self.session.db_connection.execute_query(query, (netid,))
+    
+    def hasAdvisingHold(self, netid):
+        for advisee in self.advisees:
+            if advisee['netid'] == netid and advisee['has_advising_hold'] == 1:
+                return True
+        return False
+
+    def getAdvisees(self):
+        # get netid, first name, last name, and advising hold status
+        query = """
+            WITH my_advisees AS
+                (SELECT student_id AS ID FROM advised WHERE advisor_id = %s),
+            advising_holds AS
+                (SELECT * FROM hold WHERE type = "advising")
+            SELECT id AS netid, first_name, last_name, IF (type IS NOT NULL, TRUE, FALSE) as has_advising_hold
+            FROM (student NATURAL JOIN my_advisees) LEFT JOIN advising_holds ON (id = student_id)
+        """
+        return self.session.db_connection.execute_query(query, (self.session.user_netid,))
+
+    def printAdvisees(self):
+        for advisee in self.advisees:
+            string = []
+            string.append(f"{advisee['first_name']} {advisee['last_name']} ({advisee['netid']})")
+            if (advisee["has_advising_hold"] == 1):
+                string.append(" [A]")
+
+            printToScreen("".join(string))
 
 class InstructorInformationScreen(Screen):
     def draw(self):
