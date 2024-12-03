@@ -90,6 +90,23 @@ class HomeScreen(Screen):
         
     def draw(self):
         printToScreen(f"Welcome {self.session.user_name}! Press ENTER to logout.")
+        if self.user_level == 'student':
+            printToScreen(f"Fetching hold information for {self.session.user_name}...")
+            self.get_hold_info(self.session, self.session.user_netid)  # Use the student's ID
+
+    def get_hold_info(self, session, student_id):
+        query = """
+        SELECT h.type AS hold_type
+        FROM hold h
+        WHERE h.student_id = %s;
+        """
+        results = session.db_connection.execute_query(query, (student_id,))
+        if results:
+            printToScreen("Hold(s) on your account:")
+            for hold in results:
+                printToScreen(f"- {hold['hold_type'].capitalize()} hold")
+        else:
+            printToScreen("No holds found on your account.")
 
     def prompt(self):
         userin = promptOptions(self.optionsToScreen.keys())
