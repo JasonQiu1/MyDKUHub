@@ -27,9 +27,16 @@ class Session:
                     return
 
                 try:
-                    newScreenType, args = self.screen.prompt()
+                    packed = self.screen.prompt()
+                    args = ()
+                    if packed:
+                        newScreenType = packed[0]
+                        if len(packed) > 1:
+                            args = packed[1]
+
                     if self.debug:
                         print(f"Switching to screen: {newScreenType}, args: {args}")
+
                     if newScreenType:
                         self.screen = screenTypeToScreenClass[newScreenType](self, *args)
                         self.screenType = newScreenType
