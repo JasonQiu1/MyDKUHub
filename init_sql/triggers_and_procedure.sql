@@ -741,12 +741,12 @@ END$$
 DELIMITER ;
 
 
-INSERT INTO teaches (instructor_id, section_id)
-VALUES ('bl291', 650);
+-- INSERT INTO teaches (instructor_id, section_id)
+-- VALUES ('bl291', 650);
 
-UPDATE teaches
-SET section_id = 22
-WHERE instructor_id = 'bl291' and section_id=650; 
+-- UPDATE teaches
+-- SET section_id = 22
+-- WHERE instructor_id = 'bl291' and section_id=650; 
 
 DROP PROCEDURE IF EXISTS make_payment;
 DELIMITER $$
