@@ -14,6 +14,30 @@ Using a student enrolling in a course as an example, you must check if the stude
 
 It follows then that creating a computer program and designing a database to manage all of this data and run these queries will significantly simplify the registrar’s workflow, improve registrar efficiency manifold, improve both student and instructor accessibility, and more.
 
+# Installation
+## Database Setup
+Ensure you have access to a MySQL Database and set up the MyDKUHub database by running in order the following SQL files found in the `init_sql` folder:
+1. `DDL.sql`
+2. `view.sql`
+3. `triggers_and_procedure.sql`
+
+You can choose whatever database name you like.
+
+If you would like to instantiate the database with sample data, then additionally run `init_sql/insert.sql`.
+
+Modify the `.env` file to have the correct login credentials and MyDKUHub database name to the database you have set up above.
+
+## Python Setup
+If you would like to isolate all dependencies in this project, begin by creating a virtual environment
+```bash
+python -m venv venv
+```
+
+Then install all dependencies with
+```bash
+pip install -r requirements.txt
+```
+
 # Running
 ```bash
 python main.py
