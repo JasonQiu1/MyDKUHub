@@ -837,7 +837,6 @@ class ManageCourseScreen(Screen):
 
     def add_section(self):
         printToScreen("Add New Section")
-
         course_id = getUserInput("Enter course ID:")
         section_type = getUserInput("Enter section type (lec, sem, lab, rec):")
         term = getUserInput("Enter term (spring, fall, summer):")
@@ -846,22 +845,85 @@ class ManageCourseScreen(Screen):
         capacity = getUserInput("Enter section capacity:")
         building_name = self.select_building()
         room_name = self.select_room(building_name) if building_name else None
-        
-        
         course_id = " ".join(course_id) if course_id else None
-        insert_query = """
-        INSERT INTO section (course_id, type, term, session, year, capacity, building_name, room_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+
+        time_slots = [
+            {"id": 1, "start_time": "08:30:00", "end_time": "09:45:00"},
+            {"id": 2, "start_time": "08:30:00", "end_time": "11:00:00"},
+            {"id": 3, "start_time": "10:00:00", "end_time": "11:15:00"},
+            {"id": 4, "start_time": "11:45:00", "end_time": "13:00:00"},
+            {"id": 5, "start_time": "12:00:00", "end_time": "14:30:00"},
+            {"id": 6, "start_time": "13:15:00", "end_time": "14:30:00"},
+            {"id": 7, "start_time": "14:45:00", "end_time": "16:00:00"},
+            {"id": 8, "start_time": "14:45:00", "end_time": "17:15:00"},
+            {"id": 9, "start_time": "16:15:00", "end_time": "17:30:00"},
+            {"id": 10, "start_time": "18:00:00", "end_time": "19:15:00"},
+            {"id": 11, "start_time": "19:15:00", "end_time": "20:15:00"},
+            {"id": 12, "start_time": "20:30:00", "end_time": "22:00:00"},
+        ]
+
+        printToScreen("Available Time Slots:")
+        for slot in time_slots:
+            printToScreen(f"{slot['id']}. {slot['start_time']} - {slot['end_time']}")
+
+        selected_time_slot_id = getUserInput("Select a time slot by ID:")
+        if not selected_time_slot_id or not selected_time_slot_id[0].isdigit():
+            printToScreen("Invalid selection. Time slot selection is required.")
+            return
+
+        selected_time_slot_id = int(selected_time_slot_id[0])
+        if selected_time_slot_id < 1 or selected_time_slot_id > len(time_slots):
+            printToScreen("Invalid time slot ID. Please try again.")
+            return
+
+
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+        printToScreen("Available Days:")
+        for idx, day in enumerate(days, start=1):
+            printToScreen(f"{idx}. {day.capitalize()}")
+
+        selected_day_id = getUserInput("Select a day by number:")
+        if not selected_day_id or not selected_day_id[0].isdigit():
+            printToScreen("Invalid selection. Day selection is required.")
+            return
+
+        selected_day_id = int(selected_day_id[0])
+        if selected_day_id < 1 or selected_day_id > len(days):
+            printToScreen("Invalid day selection. Please try again.")
+            return
+
+        day = days[selected_day_id - 1]
+
         try:
-            self.session.db_connection.execute_update(insert_query, (
+            section_query = """
+            INSERT INTO section (course_id, type, term, session, year, capacity, building_name, room_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            self.session.db_connection.execute_update(section_query, (
                 course_id, section_type[0], term[0], session[0],
                 int(year[0]), int(capacity[0]),
                 building_name, room_name
             ))
-            printToScreen("Section added successfully.")
+
+
+            section_id_query = "SELECT LAST_INSERT_ID() AS section_id"
+            section_id_result = self.session.db_connection.execute_query(section_id_query)
+            if not section_id_result or not section_id_result[0].get("section_id"):
+                raise ValueError("Failed to retrieve section_id after insert.")
+
+            section_id = section_id_result[0]["section_id"]
+
+            section_time_query = """
+            INSERT INTO section_time (section_id, time_slot_id, day)
+            VALUES (%s, %s, %s)
+            """
+            self.session.db_connection.execute_update(section_time_query, (section_id, selected_time_slot_id, day))
+
+            printToScreen("Section added successfully with the selected time slot and day.")
         except Exception as e:
             printToScreen(f"Failed to add section: {e}")
+
 
     def modify_section(self):
         printToScreen("Modify Section")
@@ -869,14 +931,15 @@ class ManageCourseScreen(Screen):
         course_id = getUserInput("Enter course ID (or press ENTER to skip):")
         year = getUserInput("Enter year (or press ENTER to skip):")
         term = getUserInput("Enter term (spring, fall, summer) (or press ENTER to skip):")
-        course_id = " ".join(course_id) if course_id else None
+        course_id = " ".join(course_id).strip() if course_id else None
+
         query = """
         SELECT s.id, s.course_id, s.type, s.term, s.session, s.year, s.capacity, s.building_name, s.room_name
         FROM section s
         WHERE 1=1
         """
         params = []
-        
+
         if course_id:
             query += " AND s.course_id = %s"
             params.append(course_id)
@@ -911,6 +974,84 @@ class ManageCourseScreen(Screen):
         if selected_index < 0 or selected_index >= len(sections):
             printToScreen("Invalid selection.")
             return
+
+        selected_section = sections[selected_index]
+
+        printToScreen(f"Updating Section ID: {selected_section['id']}")
+        new_capacity = getUserInput(f"Enter new capacity (current: {selected_section['capacity']}, or press ENTER to keep):")
+        new_building = self.select_building() or selected_section['building_name']
+        new_room = self.select_room(new_building) if new_building != selected_section['building_name'] else selected_section['room_name']
+
+        time_slots = [
+            {"id": 1, "start_time": "08:30:00", "end_time": "09:45:00"},
+            {"id": 2, "start_time": "08:30:00", "end_time": "11:00:00"},
+            {"id": 3, "start_time": "10:00:00", "end_time": "11:15:00"},
+            {"id": 4, "start_time": "11:45:00", "end_time": "13:00:00"},
+            {"id": 5, "start_time": "12:00:00", "end_time": "14:30:00"},
+            {"id": 6, "start_time": "13:15:00", "end_time": "14:30:00"},
+            {"id": 7, "start_time": "14:45:00", "end_time": "16:00:00"},
+            {"id": 8, "start_time": "14:45:00", "end_time": "17:15:00"},
+            {"id": 9, "start_time": "16:15:00", "end_time": "17:30:00"},
+            {"id": 10, "start_time": "18:00:00", "end_time": "19:15:00"},
+            {"id": 11, "start_time": "19:15:00", "end_time": "20:15:00"},
+            {"id": 12, "start_time": "20:30:00", "end_time": "22:00:00"},
+        ]
+
+        printToScreen("Available Time Slots:")
+        for slot in time_slots:
+            printToScreen(f"{slot['id']}. {slot['start_time']} - {slot['end_time']}")
+
+        selected_time_slot_id = getUserInput("Select a new time slot by ID (or press ENTER to keep current):")
+        if selected_time_slot_id and selected_time_slot_id[0].isdigit():
+            selected_time_slot_id = int(selected_time_slot_id[0])
+            if selected_time_slot_id < 1 or selected_time_slot_id > len(time_slots):
+                printToScreen("Invalid time slot ID. Keeping current.")
+                selected_time_slot_id = None
+        else:
+            selected_time_slot_id = None
+
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+        printToScreen("Available Days:")
+        for idx, day in enumerate(days, start=1):
+            printToScreen(f"{idx}. {day.capitalize()}")
+
+        selected_day_id = getUserInput("Select a new day by number (or press ENTER to keep current):")
+        if selected_day_id and selected_day_id[0].isdigit():
+            selected_day_id = int(selected_day_id[0])
+            if selected_day_id < 1 or selected_day_id > len(days):
+                printToScreen("Invalid day selection. Keeping current.")
+                selected_day_id = None
+        else:
+            selected_day_id = None
+
+        try:
+
+            update_section_query = """
+            UPDATE section
+            SET capacity = %s, building_name = %s, room_name = %s
+            WHERE id = %s
+            """
+            self.session.db_connection.execute_update(update_section_query, (
+                int(new_capacity[0]) if new_capacity and new_capacity[0].isdigit() else selected_section['capacity'],
+                new_building, new_room, selected_section['id']
+            ))
+
+            if selected_time_slot_id or selected_day_id:
+                update_section_time_query = """
+                UPDATE section_time
+                SET time_slot_id = %s, day = %s
+                WHERE section_id = %s
+                """
+                self.session.db_connection.execute_update(update_section_time_query, (
+                    selected_time_slot_id or selected_section['time_slot_id'],
+                    days[selected_day_id - 1] if selected_day_id else selected_section['day'],
+                    selected_section['id']
+                ))
+
+            printToScreen("Section updated successfully.")
+        except Exception as e:
+            printToScreen(f"Failed to update section: {e}")
 
 
     def delete_section(self):
