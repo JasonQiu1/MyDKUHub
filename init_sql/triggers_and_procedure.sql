@@ -805,6 +805,7 @@ BEGIN
 
     SET json_enroll_sections = CONCAT('[', enroll_section_id, ']');
     CALL GenerateUnionQuery(json_enroll_sections);
+    START TRANSACTION;
 
     -- Step 1: Check if the student is actually enrolled in the course to be dropped
     SELECT COUNT(*) INTO drop_count
@@ -826,6 +827,7 @@ BEGIN
     
     -- Step 3: Enroll in the new sections
     CALL enroll_selected_courses(student_id, enroll_section_id);
+    COMMIT;
 
     -- Step 4: Log the successful swap
     SELECT CONCAT(
