@@ -1,14 +1,12 @@
 # Screens just for students.
 
 import plotext as plt
-
 from screens.base import *
 from screens.ui import *
 from screens.types import *
 from screens.types import *
-
 from db.utils import *
-
+from screens.misc import ClassSearchScreen
 class ManageEnrollment(Screen):
     def __init__(self, session):
         super().__init__(session)
@@ -16,7 +14,7 @@ class ManageEnrollment(Screen):
 
     def draw(self):
         printToScreen(f"Manage Enrollment for {self.session.user_name}:")
-        enrolled_courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        enrolled_courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term=None, session=None, year='2024')
 
         if not enrolled_courses:
             printToScreen("You are not enrolled in any courses.")
@@ -34,7 +32,7 @@ class ManageEnrollment(Screen):
             return ScreenType.HOME, ()
     
     def handle_drop_course(self):
-        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term=None, session=None, year='2024')
         grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
@@ -69,7 +67,7 @@ class ManageEnrollment(Screen):
         return ScreenType.MANAGE_ENROLLMENT, ()
 
     def handle_swap_course(self):
-        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term='fall', session='first', year='2024')
+        courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term=None, session=None, year='2024')
         grouped_courses = group_courses_by_course_id(courses)
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
@@ -101,7 +99,7 @@ class ManageEnrollment(Screen):
 
         printToScreen("Searching for new sections to enroll in...")
         self.session.screen = ClassSearchScreen(self.session)
-        new_screen_type, args = self.session.screen.prompt()
+        new_screen_type, args = self.session.screen.prompt(swap =True)
 
         if new_screen_type != ScreenType.CLASS_RESULTS or not args:
             printToScreen("No new sections selected. Returning to enrollment management.")

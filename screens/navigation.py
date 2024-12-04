@@ -67,8 +67,8 @@ class LoginScreen(Screen):
 class HomeScreen(Screen):
     def __init__(self, session):
         super().__init__(session)
-        user_level = session.user_level
-        if user_level == 'student':
+        self.user_level = session.user_level
+        if self.user_level == 'student':
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
                     "View Shopping Cart": (ScreenType.CLASS_RESULTS, ('shopping',)), 
@@ -77,14 +77,14 @@ class HomeScreen(Screen):
                     "Personal Information": (ScreenType.PERSONAL_INFORMATION, ()),
                     "My Academic Prograss": (ScreenType.MY_ACADEMIC_PROGRESS,()),
                 }
-        elif user_level == 'instructor':
+        elif self.user_level == 'instructor':
             self.optionsToScreen = {
                     "Search Classes": (ScreenType.CLASS_SEARCH, ()), 
                     "View Teaching Classes": (ScreenType.TEACHING_CLASSES, ()),
                     "View Advisees": (ScreenType.ADVISEES, ()),
                     "View Personal Information": (ScreenType.INSTRUCTOR_INFORMATION, ()),
                 }
-        elif user_level == 'admin':
+        elif self.user_level == 'admin':
             # TODO: finish options
             self.optionsToScreen = {
                     "Manage": (ScreenType.ADMIN, ()),

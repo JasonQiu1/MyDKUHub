@@ -130,7 +130,7 @@ class ClassSearchScreen(Screen):
         printToScreen("Class Search: Find Sections Matching Your Criteria")
 
 
-    def prompt(self):
+    def prompt(self, swap = False):
         # Collect mandatory inputs
         year = getUserInput("Enter year (e.g., 2024)")
         if not year or not year[0].isdigit():
@@ -155,7 +155,7 @@ class ClassSearchScreen(Screen):
             printToScreen("Matching Sections:")
             if self.session.user_level == 'student' or self.session.user_level == 'instructor':
                 self.display_sections(self.sections)
-                return self.prompt_action()
+                return self.prompt_action(swap)
             else:
                 display_courses(self.sections, instructor=False)
                 return self.prompt_action_admin()
@@ -200,7 +200,7 @@ class ClassSearchScreen(Screen):
             printToScreen("Invalid index. Skipping department selection.")
             return None
         
-    def prompt_action(self):
+    def prompt_action(self, swap = False):
         while True:  
             action = getUserInput("Enter the index of the section to see related sections, or press ENTER to return:")
             if not action or not action[0].isdigit():
@@ -228,6 +228,8 @@ class ClassSearchScreen(Screen):
                 continue
 
             combined_section_ids = ', '.join(map(str, selected_section_ids))  
+            if swap:
+                return ScreenType.CLASS_RESULTS, [combined_section_ids]
 
             if self.session.user_level == 'student':
                 self.student_manage_sections_prompt(combined_section_ids)
@@ -236,7 +238,7 @@ class ClassSearchScreen(Screen):
 
     
     def student_manage_sections_prompt(self, combined_section_ids):
-        next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart:")
+        next_action = getUserInput(f"Enter 'E' to enroll in sections {combined_section_ids}, 'A' to add to shopping cart")
         if next_action and next_action[0].lower() == 'e':
             success = self.enroll_in_sections(self.session.user_netid, combined_section_ids)
             print('scucess', success)
