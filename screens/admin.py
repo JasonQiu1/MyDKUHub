@@ -70,13 +70,13 @@ class ManageInstructorScreen(Screen):
     def search_and_modify_instructor(self):
         first_name = getUserInput("Enter the instructor's first name (or leave empty for all):")
         last_name = getUserInput("Enter the instructor's last name (or leave empty for all):")
-
+        
         first_name_filter = f"%{first_name[0]}%" if first_name else "%"
         last_name_filter = f"%{last_name[0]}%" if last_name else "%"
 
         query = """
         SELECT id, first_name, last_name, dept, salary, isDuke
-        FROM instructor
+        FROM instructor_master
         WHERE first_name LIKE %s AND last_name LIKE %s
         """
         results = self.session.db_connection.execute_query(query, (first_name_filter, last_name_filter))
@@ -132,7 +132,7 @@ class ManageInstructorScreen(Screen):
         is_duke = getUserInput("Is this instructor a Duke employee? (yes/no, or press ENTER to skip):")
 
         update_query = """
-        UPDATE instructor
+        UPDATE instructor_master
         SET first_name = COALESCE(NULLIF(%s, ''), first_name),
             last_name = COALESCE(NULLIF(%s, ''), last_name),
             dept = COALESCE(NULLIF(%s, ''), dept),
@@ -299,6 +299,7 @@ class ManageDepartmentScreen(Screen):
         dept_name = getUserInput("Enter department name:")
         budget = getUserInput("Enter department budget:")
         dept_name = " ".join(dept_name) if dept_name else None
+        
 
         if not dept_name or not dept_name[0] or not budget or not budget[0].isdigit():
             printToScreen("Invalid inputs. Please provide a valid department name and budget.")
@@ -859,7 +860,7 @@ class ManageCourseScreen(Screen):
 
         query = """
         SELECT id, first_name, last_name, dept, salary, isDuke
-        FROM instructor
+        FROM instructor_master
         """
         instructors = self.session.db_connection.execute_query(query)
 
