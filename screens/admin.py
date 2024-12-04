@@ -776,6 +776,7 @@ class ManageCourseScreen(Screen):
             "Add New Section",
             "Modify Section",
             "Delete Section",
+            "Assign Instructor to Section",
             "Return to Course Menu"
         ]
         user_choice = promptOptions(options)
@@ -786,12 +787,116 @@ class ManageCourseScreen(Screen):
             self.add_section()
         elif user_choice[0] == "2":  # Modify Section
             self.modify_section()
-        elif user_choice[0] == "3":  # Delete Section
-            self.delete_section()
-        elif user_choice[0] == "4":  # Return to Course Menu
-            return ScreenType.MANAGE_COURSE, ()
+        elif user_choice[0] == "4":  # Assign Instructor to Section
+            self.assign_instructor_to_section()
+        else:
+            return ScreenType.HOME, ()
+    
+    def assign_instructor_to_section(self):
+        printToScreen("Assign Instructor to Section")
 
-        return ScreenType.MANAGE_COURSE, ()
+        course_id = getUserInput("Enter course ID (or press ENTER to skip):")
+        year = getUserInput("Enter year (or press ENTER to skip):")
+        term = getUserInput("Enter term (spring, fall, summer) (or press ENTER to skip):")
+        course_id = " ".join(course_id) if course_id else None
+
+        query = """
+        SELECT 
+            s.id AS section_id, 
+            s.course_id, 
+            s.type, 
+            s.term, 
+            s.session, 
+            s.year, 
+            s.capacity, 
+            s.building_name, 
+            s.room_name, 
+            c.name AS course_name
+        FROM section s
+        INNER JOIN course c ON s.course_id = c.id
+        WHERE 1=1
+        GROUP BY s.id, s.course_id, s.type, s.term, s.session, s.year, s.capacity, s.building_name, s.room_name, c.name
+        """
+        params = []
+
+        if course_id:
+            query += " AND s.course_id = %s"
+            params.append(course_id)
+
+        if year and year[0].isdigit():
+            query += " AND s.year = %s"
+            params.append(int(year[0]))
+
+        if term and term[0].lower() in ['spring', 'fall', 'summer']:
+            query += " AND s.term = %s"
+            params.append(term[0].lower())
+
+        sections = self.session.db_connection.execute_query(query, params)
+
+        if not sections:
+            printToScreen("No sections found matching the criteria.")
+            return
+
+        printToScreen("Matching Sections:")
+        for idx, section in enumerate(sections):
+            printToScreen(
+                f"{idx + 1}. Section ID: {section['section_id']}, Course Name: {section['course_name']}, "
+                f"Type: {section['type']}, Term: {section['term']}, "
+                f"Session: {section['session']}, Year: {section['year']}, Capacity: {section['capacity']}, "
+                f"Building: {section['building_name']}, Room: {section['room_name']}"
+            )
+
+        selected_index = getUserInput("Enter the number of the section to assign an instructor (or press ENTER to cancel):")
+        if not selected_index or not selected_index[0].isdigit():
+            return
+
+        selected_index = int(selected_index[0]) - 1
+        if selected_index < 0 or selected_index >= len(sections):
+            printToScreen("Invalid selection.")
+            return
+
+        selected_section = sections[selected_index]
+
+        query = """
+        SELECT id, first_name, last_name, dept, salary, isDuke
+        FROM instructor
+        """
+        instructors = self.session.db_connection.execute_query(query)
+
+        if not instructors:
+            printToScreen("No instructors available.")
+            return
+
+        printToScreen("Available Instructors:")
+        for idx, instructor in enumerate(instructors):
+            printToScreen(
+                f"{idx + 1}. ID: {instructor['id']}, Name: {instructor['first_name']} {instructor['last_name']}, "
+                f"Department: {instructor['dept']}, Salary: {instructor['salary']}, Duke Status: {instructor['isDuke']}"
+            )
+
+        selected_index = getUserInput("Enter the number of the instructor to assign (or press ENTER to cancel):")
+        if not selected_index or not selected_index[0].isdigit():
+            return
+
+        selected_index = int(selected_index[0]) - 1
+        if selected_index < 0 or selected_index >= len(instructors):
+            printToScreen("Invalid selection.")
+            return
+
+        selected_instructor = instructors[selected_index]
+
+        try:
+            assign_query = """
+            INSERT INTO teaches (instructor_id, section_id)
+            VALUES (%s, %s)
+            """
+            self.session.db_connection.execute_update(assign_query, (selected_instructor['id'], selected_section['section_id']))
+            printToScreen(f"Instructor {selected_instructor['first_name']} {selected_instructor['last_name']} "
+                        f"has been successfully assigned to section {selected_section['section_id']} "
+                        f"of course {selected_section['course_name']}.")
+        except Exception as e:
+            printToScreen(f"Failed to assign instructor: {e}")
+
 
     def view_sections(self):
         printToScreen("View Sections")
