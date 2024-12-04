@@ -567,13 +567,14 @@ class ManageCourseScreen(Screen):
 
     def manage_courses(self):
         course_id = getUserInput("Enter course ID:")
+        course_id = " ".join(course_id) if course_id else None
 
         query = """
         SELECT c.id, c.name, c.type, c.dept_name, c.credits, c.description
         FROM course c
         WHERE c.id LIKE %s
         """
-        courses = self.session.db_connection.execute_query(query, (f"%{course_id[0]}%",))
+        courses = self.session.db_connection.execute_query(query, (f"%{course_id}%",))
 
         if not courses:
             printToScreen("No courses found with the given ID.")
@@ -618,7 +619,7 @@ class ManageCourseScreen(Screen):
             dept_name = COALESCE(NULLIF(%s, ''), dept_name),
             credits = COALESCE(NULLIF(%s, ''), credits),
             description = COALESCE(NULLIF(%s, ''), description)
-        WHERE id = %s
+        WHERE id LIKE %s
         """
         try:
             self.session.db_connection.execute_update(update_query, (
@@ -684,13 +685,14 @@ class ManageCourseScreen(Screen):
 
     def delete_course(self):
         course_id = getUserInput("Enter course ID to delete:")
+        course_id = " ".join(course_id) if course_id else None
 
         query = """
         SELECT c.id, c.name, c.type, c.dept_name, c.credits
         FROM course c
-        WHERE c.id LIKE %s
+        WHERE c.id Like %s
         """
-        courses = self.session.db_connection.execute_query(query, (f"%{course_id[0]}%",))
+        courses = self.session.db_connection.execute_query(query, (f"%{course_id}%",))
 
         if not courses:
             printToScreen("No courses found with the given ID.")
@@ -874,10 +876,10 @@ class ManageCourseScreen(Screen):
         WHERE 1=1
         """
         params = []
-
-        if course_id and course_id[0]:
-            query += " AND s.course_id LIKE %s"
-            params.append(f"%{course_id[0]}%")
+        
+        if course_id:
+            query += " AND s.course_id = %s"
+            params.append(course_id)
 
         if year and year[0].isdigit():
             query += " AND s.year = %s"
