@@ -95,7 +95,7 @@ class HomeScreen(Screen):
         
     def draw(self):
         printToScreen(f"Welcome {self.session.user_name}! Press ENTER to logout.")
-        if self.user_level == 'student':
+        if self.session.user_level == 'student':
             printToScreen(f"Fetching hold information for {self.session.user_name}...")
             self.get_hold_info(self.session, self.session.user_netid)  # Use the student's ID
 

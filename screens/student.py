@@ -34,6 +34,7 @@ class ManageEnrollment(Screen):
     def handle_drop_course(self):
         courses = get_enrolled_courses(self.session.db_connection, self.session.user_netid, term=None, session=None, year='2024')
         grouped_courses = group_courses_by_course_id(courses)
+    
         
         user_input = getUserInput("Enter the numbers of the courses to manage (comma-separated, or press ENTER to return):")
         if not user_input:
