@@ -1,3 +1,5 @@
+use mydkuhub;
+
 DROP PROCEDURE IF EXISTS AddAdvisingHoldsToAllStudents;
 CREATE PROCEDURE AddAdvisingHoldsToAllStudents()
 	INSERT INTO hold SELECT id, 'advising' FROM student 
@@ -377,8 +379,8 @@ BEGIN
     -- check if there is any hold
 	SELECT COUNT(*) INTO hold_count
     FROM hold
-    WHERE student_id = student_id
-      AND type IN ('advising', 'register');
+    WHERE hold.student_id = student_id
+      AND type IN ('advising', 'registrar');
     IF hold_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Student account is on hold for advising or registration';
