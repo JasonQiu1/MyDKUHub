@@ -801,7 +801,7 @@ class ManageCourseScreen(Screen):
         course_id = " ".join(course_id) if course_id else None
 
         query = """
-        SELECT 
+        SELECT DISTINCT 
             s.id AS section_id, 
             s.course_id, 
             s.type, 
@@ -815,8 +815,8 @@ class ManageCourseScreen(Screen):
         FROM section s
         INNER JOIN course c ON s.course_id = c.id
         WHERE 1=1
-        GROUP BY s.id, s.course_id, s.type, s.term, s.session, s.year, s.capacity, s.building_name, s.room_name, c.name
         """
+
         params = []
 
         if course_id:
