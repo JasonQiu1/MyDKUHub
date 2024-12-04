@@ -827,7 +827,7 @@ class ManageCourseScreen(Screen):
         printToScreen("Matching Sections:")
         for section in sections:
             printToScreen(
-                f"Section ID: {section['id']}, Type: {section['type']}, Term: {section['term']}, "
+                    f"Course ID: {section['course_id']}, Section ID: {section['id']}, Type: {section['type']}, Term: {section['term']}, "
                 f"Session: {section['session']}, Year: {section['year']}, Capacity: {section['capacity']}, "
                 f"Building: {section['building_name']}, Room: {section['room_name']}"
             )
