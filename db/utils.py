@@ -18,10 +18,10 @@ def get_enrolled_courses(db_connection, student_id, term=None, session=None, yea
     return db_connection.execute_query(query, tuple(params))
 
 
-def get_matching_sections(db_connection, year, term, session=None, dept_name=None, instructor_name=None):
+def get_course_sections(db_connection, year, term, session=None, dept_name=None, instructor_name=None, course_id=None):
     query = """
     SELECT * 
-    FROM matching_sections_view
+    FROM course_sections_view
     WHERE year = %s AND term = %s
     """
     params = [year, term]
@@ -37,6 +37,10 @@ def get_matching_sections(db_connection, year, term, session=None, dept_name=Non
     if instructor_name:
         query += " AND instructors LIKE %s"
         params.append(f"%{instructor_name}%")
+
+    if course_id:
+        query += " AND course_id = %s"
+        params.append(course_id)
 
     return db_connection.execute_query(query, tuple(params))
 

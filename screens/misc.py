@@ -149,7 +149,7 @@ class ClassSearchScreen(Screen):
         instructor_name = getUserInput("Enter instructor name (or press ENTER to skip)")
         instructor_name = instructor_name[0] if instructor_name else None
 
-        self.sections = get_matching_sections(self.session.db_connection, year[0], term[0].lower(), session, dept_name, instructor_name)
+        self.sections = get_course_sections(self.session.db_connection, year[0], term[0].lower(), session, dept_name, instructor_name)
 
         if self.sections:
             printToScreen("Matching Sections:")
@@ -212,9 +212,8 @@ class ClassSearchScreen(Screen):
                 continue  
 
             selected_section = self.sections_map[idx]
-
-            related_sections = self.get_related_sections(
-                selected_section['course_id'], selected_section['term'], selected_section['session'], selected_section['year']
+            related_sections = get_course_sections(
+                self.session.db_connection, term=selected_section['term'], session=selected_section['session'], year=selected_section['year'],course_id = selected_section['course_id']
             )
 
             if not related_sections:
@@ -261,20 +260,11 @@ class ClassSearchScreen(Screen):
         return ScreenType.HOME, ()
         
 
-    def get_related_sections(self, course_id, term, session, year):
-        query = """
-        SELECT *
-        FROM related_sections_view
-        WHERE course_id = %s AND term = %s AND session = %s AND year = %s
-        """
-        return self.session.db_connection.execute_query(query, (course_id, term, session, year))
-
-
     def select_related_sections(self, related_sections):
         selected_sections = {}
         sections_by_type = {}
         for section in related_sections:
-            section_type = section['section_type']
+            section_type = section['type']
             if section_type not in sections_by_type:
                 sections_by_type[section_type] = []
             sections_by_type[section_type].append(section)
