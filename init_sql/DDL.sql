@@ -49,16 +49,14 @@ create table major(
 	name varchar(100) primary key
 );
 
-
 create table student (
     id varchar(10) primary key,
     first_name varchar(100) not null,
     last_name varchar(100) not null,
     major varchar(100) default 'Not Declared',
     class varchar(4),
-	foreign key (major) references major(name)
+		foreign key (major) references major(name)
 );
-
 
 create table instructor (
     id varchar(10) primary key,
@@ -282,7 +280,7 @@ create table login_info (
 
 create table hold (
 		student_id varchar(50),
-        type enum('advising', 'registrar') not null,
+		type enum('advising', 'registrar') not null,
 		primary key (student_id, type),
 		foreign key (student_id) references student(id)
         on delete cascade

@@ -1,4 +1,3 @@
-use mydkuhub;
 
 DROP PROCEDURE IF EXISTS AddAdvisingHoldsToAllStudents;
 CREATE PROCEDURE AddAdvisingHoldsToAllStudents()
@@ -159,12 +158,10 @@ BEGIN
     DECLARE finished INT DEFAULT 0;
     DECLARE has_prereqs INT;
 
-    -- Initialize section list
+
     SET section_list = selected_sections;
 
-    -- Label the loop for ITERATE to reference
     section_loop: WHILE NOT finished DO
-        -- Extract the next section ID
         SET pos = LOCATE(',', section_list);
         IF pos > 0 THEN
             SET section_id = SUBSTRING(section_list, 1, pos - 1);
@@ -173,25 +170,18 @@ BEGIN
             SET section_id = section_list;
             SET finished = 1;
         END IF;
-
-        -- Fetch the course_id and schedule details for the current section
         SELECT course_id, year, term, session
         INTO current_course_id, current_year, current_term, current_session
         FROM section
         WHERE id = section_id;
-
-        -- Check if the current course has any prerequisites
         SELECT COUNT(*) INTO has_prereqs
         FROM course_req
         WHERE course_id = current_course_id
           AND type = 'prereq';
-
-        -- If no prerequisites, continue to the next iteration
         IF has_prereqs = 0 THEN
-            ITERATE section_loop; -- Skip the rest of the loop and continue
+            ITERATE section_loop; 
         END IF;
 
-        -- Check if there are any unmet prerequisite groups
         SELECT COUNT(*)
         INTO unmet_groups
         FROM (
@@ -229,7 +219,6 @@ BEGIN
             HAVING unmet_reqs = 0
         ) AS satisfied_groups;
 
-        -- Raise an error if no groups are satisfied
         IF unmet_groups = 0 THEN
             SET error_message = CONCAT('No prerequisites met for course: ', current_course_id);
             SIGNAL SQLSTATE '45000'
@@ -260,12 +249,10 @@ BEGIN
     DECLARE finished INT DEFAULT 0;
     DECLARE has_coreqs INT;
 
-    -- Initialize section list
     SET section_list = selected_sections;
 
-    -- Label the loop for ITERATE to reference
     section_loop: WHILE NOT finished DO
-        -- Extract the next section ID
+
         SET pos = LOCATE(',', section_list);
         IF pos > 0 THEN
             SET section_id = SUBSTRING(section_list, 1, pos - 1);
@@ -275,24 +262,21 @@ BEGIN
             SET finished = 1;
         END IF;
 
-        -- Fetch the course_id and schedule details for the current section
         SELECT course_id, year, term, session
         INTO current_course_id, current_year, current_term, current_session
         FROM section
         WHERE id = section_id;
 
-        -- Check if the current course has any co-requisites
         SELECT COUNT(*) INTO has_coreqs
         FROM course_req
         WHERE course_id = current_course_id
           AND type = 'coreq';
 
-        -- If no co-requisites, continue to the next iteration
+
         IF has_coreqs = 0 THEN
-            ITERATE section_loop; -- Skip the rest of the loop and continue
+            ITERATE section_loop; 
         END IF;
 
-        -- Check if there are any unmet co-requisite groups
         SELECT COUNT(*)
         INTO unmet_groups
         FROM (
@@ -325,7 +309,7 @@ BEGIN
                        (year < current_year OR
                        (term <= current_term AND
                        (term < current_term OR
-                       (session <= current_session))))) -- Apply co-requisite constraints to selected sections
+                       (session <= current_session))))) 
             ) e ON cr.req_id = e.course_id
             WHERE cr.course_id = current_course_id
               AND cr.type = 'coreq'
@@ -333,7 +317,6 @@ BEGIN
             HAVING unmet_reqs = 0
         ) AS satisfied_groups;
 
-        -- Raise an error if no groups are satisfied
         IF unmet_groups = 0 THEN
             SET error_message = CONCAT('No co-requisites met for course: ', current_course_id);
             SIGNAL SQLSTATE '45000'
@@ -349,14 +332,14 @@ DROP PROCEDURE IF EXISTS enroll_selected_courses;
 DELIMITER $$
 CREATE PROCEDURE enroll_selected_courses(
     student_id VARCHAR(50),
-    selected_sections TEXT -- Comma-separated list of section IDs
+    selected_sections TEXT 
 )
 BEGIN
     DECLARE conflict_count INT;
     DECLARE anti_req_violations INT;
     DECLARE credit_exceeded_count INT;
     DECLARE balance_due double;
-    DECLARE hold_count BOOLEAN;
+    DECLARE hold_count int;
     DECLARE over_capacity_count INT;
     DECLARE duplicate_course_count INT;
 	DECLARE json_selected_sections TEXT;
@@ -366,7 +349,6 @@ BEGIN
 
 	CALL GenerateUnionQuery(json_selected_sections);
     
-    -- check if there is any outstanding payment
     SELECT due - paid INTO balance_due
     FROM balance
     WHERE student_id = student_id;
@@ -376,18 +358,15 @@ BEGIN
     END IF;
     
 
-    -- check if there is any hold
 	SELECT COUNT(*) INTO hold_count
     FROM hold
     WHERE hold.student_id = student_id
-      AND type IN ('advising', 'registrar');
+      AND type IN ('advising', 'register');
     IF hold_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Student account is on hold for advising or registration';
     END IF;
 
-    
-    -- check if the student already taken the same course before
     SET duplicate_course_count = (
         SELECT COUNT(*)
         FROM enrollment e
@@ -401,8 +380,6 @@ BEGIN
         SET MESSAGE_TEXT = 'Student has already taken one or more of the selected courses';
     END IF;
 
-
-    -- Check time conflict, with the previous enrollment and the current intended enrollments
     SET conflict_count = (
         SELECT COUNT(*)
         FROM (
@@ -473,9 +450,6 @@ BEGIN
         SET MESSAGE_TEXT = 'Anti-requisite violated for this course';
     END IF;
     
-
-   
-    -- check the total credit limit
     WITH selected_credits AS (
         SELECT
             sec.year,
@@ -483,7 +457,7 @@ BEGIN
             sec.session,
             SUM(c.credits) AS total_credits
         FROM section sec
-        JOIN course c ON sec.course_id = c.id
+        JOIN course c ON sec.course_id = c.id and sec.type = c.type
         WHERE FIND_IN_SET(sec.id, selected_sections)
         GROUP BY sec.year, sec.term, sec.session
     ),
@@ -495,7 +469,7 @@ BEGIN
             SUM(c.credits) AS total_credits
         FROM enrollment e
         JOIN section sec ON e.section_id = sec.id
-        JOIN course c ON sec.course_id = c.id
+        JOIN course c ON sec.course_id = c.id and sec.type = c.type
         WHERE e.student_id = student_id
         GROUP BY sec.year, sec.term, sec.session
     ),
@@ -520,7 +494,6 @@ BEGIN
         SET MESSAGE_TEXT = 'Credit limit exceeded for one or more terms';
     END IF;
 
-    -- check the section capacity
      SET over_capacity_count = (
         SELECT COUNT(*)
         FROM section s
@@ -536,13 +509,11 @@ BEGIN
     END IF;
     
 
-    -- insert valid courses into enrollment
     INSERT INTO enrollment (student_id, section_id, grade)
     SELECT student_id, id, NULL
     FROM section
     WHERE FIND_IN_SET(id, selected_sections);
     
-    -- clear enrolled courses from shopping cart
     SET SQL_SAFE_UPDATES = 0; 
     DELETE FROM shopping
     WHERE student_id = student_id
@@ -553,11 +524,8 @@ BEGIN
 END$$
 DELIMITER ;
 
-
-
--- CALL enroll_selected_courses('yg202', '55,56');
-
-
+    
+		
 DROP TRIGGER IF EXISTS check_section_time_insert_validity;
 DELIMITER $$
 
@@ -567,8 +535,6 @@ FOR EACH ROW
 BEGIN
     DECLARE room_conflict_count INT;
     DECLARE instructor_conflict_count INT;
-
-    -- Check if the room is already occupied at the same time
     SELECT COUNT(*)
     INTO room_conflict_count
     FROM section s
@@ -606,7 +572,6 @@ BEGIN
     DECLARE room_conflict_count INT;
     DECLARE instructor_conflict_count INT;
 
-    -- Check if the updated room is already occupied at the same time
     SELECT COUNT(*)
     INTO room_conflict_count
     FROM section s
@@ -628,7 +593,6 @@ BEGIN
         SET MESSAGE_TEXT = 'Room is already occupied at the same time by another section';
     END IF;
 
-    -- Check if the updated instructor has a time conflict
     SELECT COUNT(*)
     INTO instructor_conflict_count
     FROM teaches t
@@ -678,8 +642,6 @@ BEFORE INSERT ON teaches
 FOR EACH ROW
 BEGIN
     DECLARE time_conflict_count INT;
-
-    -- Check for time conflicts
     SELECT COUNT(*)
     INTO time_conflict_count
     FROM teaches t
@@ -714,8 +676,6 @@ BEFORE UPDATE ON teaches
 FOR EACH ROW
 BEGIN
     DECLARE time_conflict_count INT;
-
-    -- Check for time conflicts
     SELECT COUNT(*)
     INTO time_conflict_count
     FROM teaches t
@@ -764,7 +724,6 @@ BEGIN
     FROM balance
     WHERE student_id = student_id;
 
-    -- Validate the payment amount
     IF current_outstanding_due IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Student ID not found in balance table';
@@ -781,7 +740,6 @@ BEGIN
         outstanding_due = outstanding_due - payment_amount,
         paid = paid + payment_amount
     WHERE student_id = student_id;
-    -- Log success message
     SELECT CONCAT('Payment of ', payment_amount, ' applied for student ID ', student_id) AS payment_status;
 END$$
 
@@ -792,8 +750,8 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS swap_course$$
 CREATE PROCEDURE swap_course(
     IN student_id VARCHAR(50),
-    IN drop_section_id TEXT, -- The section ID to drop
-    IN enroll_section_id TEXT -- Comma-separated list of section IDs to enroll
+    IN drop_section_id TEXT, 
+    IN enroll_section_id TEXT 
 )
 BEGIN
     
@@ -801,7 +759,6 @@ BEGIN
     DECLARE json_drop_sections TEXT;
     DECLARE json_enroll_sections TEXT;
 
-    -- Ensure proper JSON formatting for the section IDs
     SET json_drop_sections = CONCAT('[', drop_section_id, ']');
     CALL GenerateUnionQuery(json_drop_sections);
 
@@ -809,7 +766,6 @@ BEGIN
     CALL GenerateUnionQuery(json_enroll_sections);
     START TRANSACTION;
 
-    -- Step 1: Check if the student is actually enrolled in the course to be dropped
     SELECT COUNT(*) INTO drop_count
     FROM enrollment
     WHERE student_id = student_id
@@ -820,18 +776,15 @@ BEGIN
         SET MESSAGE_TEXT = 'Student is not enrolled in the section to be dropped';
     END IF;
 
-    -- Step 2: Drop the specified course
     SET SQL_SAFE_UPDATES = 0;
     DELETE FROM enrollment
     WHERE student_id = student_id
       AND FIND_IN_SET(section_id, drop_section_id);
     SET SQL_SAFE_UPDATES = 1;
     
-    -- Step 3: Enroll in the new sections
     CALL enroll_selected_courses(student_id, enroll_section_id);
     COMMIT;
 
-    -- Step 4: Log the successful swap
     SELECT CONCAT(
         'Successfully swapped section ', drop_section_id, 
         ' with new sections: ', enroll_section_id
@@ -842,24 +795,20 @@ END$$
 DELIMITER ;
 
 
-
-
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS drop_course$$
 CREATE PROCEDURE drop_course(
     IN student_id VARCHAR(50),
-    IN drop_section_id TEXT -- The section IDs to drop, comma-separated
+    IN drop_section_id TEXT -
 )
 BEGIN
     DECLARE drop_count INT;
     DECLARE json_drop_sections TEXT;
 
-     -- Ensure proper JSON formatting for the section IDs
     SET json_drop_sections = CONCAT('[', drop_section_id, ']');
     CALL GenerateUnionQuery(json_drop_sections);
     
-    -- Step 1: Check if the student is actually enrolled in the course to be dropped
     SELECT COUNT(*) INTO drop_count
     FROM enrollment
     WHERE student_id = student_id
@@ -870,21 +819,18 @@ BEGIN
         SET MESSAGE_TEXT = 'Student is not enrolled in the section to be dropped';
     END IF;
 
-    -- Step 2: Drop the specified course
     SET SQL_SAFE_UPDATES = 0;
     DELETE FROM enrollment
     WHERE student_id = student_id
       AND FIND_IN_SET(section_id, drop_section_id);
 	SET SQL_SAFE_UPDATES = 1;
 
-
-    -- Step 3: Log the successful drop
     SELECT CONCAT('Successfully dropped section(s): ', drop_section_id) AS drop_status;
 END$$
 
 DELIMITER ;
 -- example usage
--- CALL swap_course('yg202', '55,56','24');
+-- CALL swap_course('yg202', '55, 56','24');
 
 delimiter $$
 

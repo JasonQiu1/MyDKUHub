@@ -135,7 +135,7 @@ class ManageEnrollment(Screen):
             if result is None:
                 return True  
             else:
-                printToScreen(f"Swap failed with message: {result}")
+                printToScreen(f"{result}")
                 return False
         except Exception as e:
             printToScreen(f"Error during swap: {e}")

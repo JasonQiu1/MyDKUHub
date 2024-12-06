@@ -1,7 +1,10 @@
+
+
 insert into major (name) values 
 ('Not Declared'),
 ('Computer Science'),
 ('Art History');
+
 
 insert into dept (name, budget) values
 ('Computer Science', 500000),
@@ -49,9 +52,9 @@ insert into classroom (building_name, room_name) values
 
 
 insert into student (id, first_name, last_name, major, class) values 
-('yg202', 'Yinuo', 'Guo', 'Art History', '2025'),
-('jc923', 'Jingfeng', 'Chen', 'Computer Science', '2026'),
-('jq48', 'Jason', 'Qiu', 'Computer Science', '2026');
+('yg202', 'Yinuo', 'Guo', 'Art History', '2026'),
+('jc923', 'Jingfeng', 'Chen', 'Computer Science', '2027'),
+('jq48', 'Jason', 'Qiu', 'Computer Science', '2027');
 
 insert into instructor (id, first_name, last_name, dept, salary, isDuke) values 
 ('mm940', 'Mustafa', 'Misir', 'Computer Science', 1, False),
@@ -311,8 +314,6 @@ from instructor;
 insert into instructor_master (id, first_name, last_name, dept, salary, isDuke, is_active)
 select id, first_name, last_name, dept, salary, isDuke, false
 from past_instructor;
-
-INSERT INTO hold values ("jq48", "advising");
 
 insert into teaches (instructor_id, section_id) value 
 ('bl291', 1),
@@ -799,32 +800,30 @@ call insert_multiple_rows();
 
 
 insert into credit_limit(student_id, year, term, session, credit_limit) values 
-('yg202', 2024, 'Fall', 'first', 21),
-('yg202', 2024, 'Fall', 'second', 21),
-('yg202', 2024, 'Spring', 'first', 21),
-('yg202', 2024, 'Spring', 'second', 21),
-('yg202', 2023, 'Fall', 'first', 21),
-('yg202', 2023, 'Fall', 'second', 21),
-('yg202', 2023, 'Spring', 'first', 21),
-('yg202', 2023, 'Spring', 'second', 21),
-('jc923', 2024, 'Fall', 'first', 21),
-('jc923', 2024, 'Fall', 'second', 21),
-('jc923', 2024, 'Spring', 'first', 21),
-('jc923', 2024, 'Spring', 'second', 21),
-('jc923', 2023, 'Fall', 'first', 21),
-('jc923', 2023, 'Fall', 'second', 21),
-('jc923', 2023, 'Spring', 'first', 21),
-('jc923', 2023, 'Spring', 'second', 21),
-('jq48', 2024, 'Fall', 'first', 21),
-('jq48', 2024, 'Fall', 'second', 21),
-('jq48', 2024, 'Spring', 'first', 21),
-('jq48', 2024, 'Spring', 'second', 21),
-('jq48', 2023, 'Fall', 'first', 21),
-('jq48', 2023, 'Fall', 'second', 21),
-('jq48', 2023, 'Spring', 'first', 21),
-('jq48', 2023, 'Spring', 'second', 21);
-
-
+('yg202', 2024, 'Fall', 'first', 10),
+('yg202', 2024, 'Fall', 'second', 10),
+('yg202', 2024, 'Spring', 'first', 10),
+('yg202', 2024, 'Spring', 'second', 10),
+('yg202', 2023, 'Fall', 'first', 10),
+('yg202', 2023, 'Fall', 'second', 10),
+('yg202', 2023, 'Spring', 'first', 10),
+('yg202', 2023, 'Spring', 'second', 10),
+('jc923', 2024, 'Fall', 'first', 10),
+('jc923', 2024, 'Fall', 'second', 10),
+('jc923', 2024, 'Spring', 'first', 10),
+('jc923', 2024, 'Spring', 'second', 10),
+('jc923', 2023, 'Fall', 'first', 10),
+('jc923', 2023, 'Fall', 'second', 10),
+('jc923', 2023, 'Spring', 'first', 10),
+('jc923', 2023, 'Spring', 'second', 10),
+('jq48', 2024, 'Fall', 'first', 10),
+('jq48', 2024, 'Fall', 'second', 10),
+('jq48', 2024, 'Spring', 'first', 10),
+('jq48', 2024, 'Spring', 'second', 10),
+('jq48', 2023, 'Fall', 'first', 10),
+('jq48', 2023, 'Fall', 'second', 10),
+('jq48', 2023, 'Spring', 'first', 10),
+('jq48', 2023, 'Spring', 'second', 10);
 
 insert into course_division (course_id, division)
 select distinct c.id,
@@ -878,23 +877,29 @@ insert into enrollment (student_id, section_id, grade) values
 ('yg202', 218, 'D'), -- MATH 303
 ('yg202', 105, 'C'), -- CS 309. Spring 2024
 ('yg202', 106, 'C'), 
-('yg202', 165, 'B'), -- STATS 401
+-- ('yg202', 165, 'B'), -- STATS 401
 ('yg202', 104, 'B'), -- CS 308
 ('yg202', 141, 'D'); -- MATH 308
 
 insert into shopping (student_id, section_id) values 
-('yg202', 55), -- MATH 305. Fall 2024
+('yg202', 7), -- CS 201
+('yg202', 8),
+('yg202', 55), -- MATH 305
 ('yg202', 56), 
 ('yg202', 57), -- MATH 307
+('yg202', 82),
 ('yg202', 24), -- CS 310
 ('yg202', 80), -- STATS 303 cannot enroll
-('yg202', 81);
+('yg202', 81),
+('yg202', 60),
+('yg202', 83); -- Math 408 cannot enroll;
+
 
 insert into enrollment (student_id, section_id, grade) values 
 ('jc923', 167, 'A'), -- CS 101. Fall 2023
 ('jc923', 168, 'A'),
-('jc923', 192, 'A'), -- MATH 105
-('jc923', 193, 'A'),
+('jc923', 194, 'A'), -- MATH 105
+('jc923', 195, 'A'),
 ('jc923', 176, 'A'), -- CS 201
 ('jc923', 177, 'A'), 
 ('jc923', 208, 'A'), -- MATH 202
@@ -915,7 +920,6 @@ insert into shopping (student_id, section_id) values
 ('jc923', 24), -- CS 310
 ('jc923', 80), -- STATS 303 cannot enroll
 ('jc923', 81);
-
 
 insert into enrollment (student_id, section_id, grade) values 
 ('jq48', 237, 'A'), -- STATS 102. Fall 2023
@@ -940,6 +944,7 @@ insert into shopping (student_id, section_id) values
 ('jq48', 57), -- MATH 307
 ('jq48', 24), -- CS 310
 ('jq48', 18); -- CS 207
+
 
 insert into admin values ('admin');
 
