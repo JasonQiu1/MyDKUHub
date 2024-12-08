@@ -44,10 +44,8 @@ BEGIN
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
     SET @formatted_id_list = CONCAT('(', REPLACE(REPLACE(id_list, '[', ''), ']', ''), ')');
 
-    -- Initialize the dynamic query
     SET @query = '';
 
-    -- Open the cursor
     OPEN cur;
 
     read_loop: LOOP
@@ -56,7 +54,6 @@ BEGIN
             LEAVE read_loop;
         END IF;
 
-        -- Append the SELECT statement for the current ID to the query
         SET @query = CONCAT(@query, 
             IF(@query = '', '', ' UNION '), 
             'SELECT DISTINCT s.id AS section_id, 
@@ -91,10 +88,8 @@ BEGIN
         );
     END LOOP;
 
-    -- Close the cursor
     CLOSE cur;
 
-    -- Use the generated query in a CTE for TempSectionTable
     SET @cte_section = CONCAT(
         'WITH TempSectionTable AS (', @query, '),
         TempValidTable AS (
@@ -124,12 +119,10 @@ BEGIN
         SELECT COUNT(*) INTO @group_count FROM TempValidTable;'
     );
 
-    -- Execute the CTE query
     PREPARE stmt_cte FROM @cte_section;
     EXECUTE stmt_cte;
     DEALLOCATE PREPARE stmt_cte;
 
-    -- Handle validation results
     IF @group_count > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Not all sub_lectures are selected';
