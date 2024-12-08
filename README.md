@@ -23,7 +23,7 @@ Ensure you have access to a MySQL Database and set up the MyDKUHub database by r
 
 You can choose whatever database name you like.
 
-If you would like to instantiate the database with sample data, then additionally run `init_sql/insert.sql`.
+If you would like to instantiate the database with sample data, then additionally run `init_sql/insert.sql` before step 3 above.
 
 Modify the `.env` file to have the correct login credentials and MyDKUHub database name to the database you have set up above.
 
